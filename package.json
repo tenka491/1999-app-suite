@@ -1,0 +1,27 @@
+{
+  "name": "1999-app-suite",
+  "version": "0.1.0",
+  "description": "", 
+  "author": "Shane T Connor",
+  "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tenka491/1999-app-suite.git"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "build:all": "lerna run build",
+    "dev:all": "lerna run dev",
+    "test": "test"
+  },
+  "devDependencies": {
+    "lerna": "^7.0.0"
+  },
+  "bugs": {
+    "url": "https://github.com/tenka491/1999-app-suite/issues"
+  },
+  "homepage": "https://github.com/tenka491/1999-app-suite#readme"
+}
