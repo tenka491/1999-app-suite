@@ -2,6 +2,7 @@
   <div>
     <Toolbar />
     <Editor />
+    <p>sleep</p>
   </div>
 </template>
 
@@ -27,3 +28,4 @@ export default {
   color: #f0f0f0;
 }
 </style>
+

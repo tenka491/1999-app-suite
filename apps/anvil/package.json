@@ -1,7 +1,7 @@
 {
-  "name": "tauri-start-setup",
+  "name": "anvil-code-editor",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.1.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -12,10 +12,11 @@
     "tauri:build": "tauri build"
   },
   "dependencies": {
+    "@tauri-apps/api": "^2.8.0",
+    "@tauri-apps/cli": "^2.8.4",
     "vue": "^3.5.18"
   },
   "devDependencies": {
-    "@tauri-apps/cli": "^2.8.4",
     "@types/node": "^24.3.0",
     "@vitejs/plugin-vue": "^6.0.1",
     "@vue/tsconfig": "^0.7.0",

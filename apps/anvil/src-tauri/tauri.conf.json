@@ -12,9 +12,9 @@
   "app": {
     "windows": [
       {
-        "title": "anvil",
-        "width": 800,
-        "height": 600,
+        "title": "Anvil",
+        "width": 1024,
+        "height": 768,
         "resizable": true,
         "fullscreen": false
       }
