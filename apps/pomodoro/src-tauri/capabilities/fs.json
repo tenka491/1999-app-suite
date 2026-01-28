@@ -1,0 +1,13 @@
+{
+  "identifier": "fs-default",
+  "description": "Allow reading/writing app-specific config files",
+  "permissions": [
+    {
+      "identifier": "fs:default",
+      "allow": [
+        "$APPDATA/*",
+        "$APPDATA/**"
+      ]
+    }
+  ]
+}
