@@ -4,6 +4,7 @@
   "description": "", 
   "author": "Shane T Connor",
   "license": "ISC",
+  "private": true,
   "repository": {
     "type": "git",
     "url": "git+https://github.com/tenka491/1999-app-suite.git"

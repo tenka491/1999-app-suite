@@ -1,0 +1,31 @@
+@use 'reset';
+@use 'tokens' as *;
+
+body {
+    background-color: $bg-color;
+    color: $text-color;
+    padding: $space-2;
+    font-family: $font-mono;
+    font-feature-settings: "zero" 0;
+}
+
+main {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    align-items: center;
+}
+
+h1 {
+    font-size: 64px;
+    border: 1px solid $color-3;
+    margin-bottom: $space-3;
+}
+
+button {
+    padding: $space-1;
+    background-color: $color-3;
+    border: 1px solid $color-4;
+    border-radius: $border-radius-sm;
+}
