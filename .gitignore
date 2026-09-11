@@ -1,8 +1,6 @@
 # Node modules
 /node_modules/
 .npm
-.yarn
-yarn.lock
 package-lock.json
 
 # Tauri build artifacts

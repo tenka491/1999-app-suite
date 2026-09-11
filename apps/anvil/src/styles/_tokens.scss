@@ -1,0 +1,21 @@
+// Dark theme (default and only theme for now — see PRD F10 for the theme
+// system planned in M5). All consumers read these as CSS custom properties,
+// never Sass variables, so a future theme swap needs no component changes.
+:root {
+	--font-mono: 'Red Hat Mono', ui-monospace, monospace;
+
+	--space-1: 8px;
+	--space-2: 16px;
+	--space-3: 24px;
+	--space-4: 32px;
+	--space-5: 40px;
+
+	--color-bg: #1a1a1a;
+	--color-bg-elevated: #212121;
+	--color-fg: #e0e0e0;
+	--color-fg-muted: #888888;
+	--color-border: #333333;
+	--color-accent: #d7776a;
+	--color-danger: #e5484d;
+	--color-selection: #2a3f54;
+}

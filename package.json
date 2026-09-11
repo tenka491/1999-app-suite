@@ -13,14 +13,6 @@
     "apps/*",
     "packages/*"
   ],
-  "scripts": {
-    "build:all": "lerna run build",
-    "dev:all": "lerna run dev",
-    "test": "test"
-  },
-  "devDependencies": {
-    "lerna": "^7.0.0"
-  },
   "bugs": {
     "url": "https://github.com/tenka491/1999-app-suite/issues"
   },
