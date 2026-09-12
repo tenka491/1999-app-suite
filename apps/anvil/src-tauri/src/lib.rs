@@ -1,10 +1,17 @@
+mod config;
 mod fs;
+
+use tauri::{Emitter, Manager};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
   tauri::Builder::default()
     .plugin(tauri_plugin_dialog::init())
-    .invoke_handler(tauri::generate_handler![fs::read_file, fs::write_file])
+    .invoke_handler(tauri::generate_handler![
+      fs::read_file,
+      fs::write_file,
+      config::read_user_keymap
+    ])
     .setup(|app| {
       if cfg!(debug_assertions) {
         app.handle().plugin(
@@ -12,6 +19,15 @@ pub fn run() {
             .level(log::LevelFilter::Info)
             .build(),
         )?;
+      }
+      match config::watch_user_keymap(&app.handle().clone()) {
+        Ok(watcher) => {
+          app.manage(watcher);
+        }
+        Err(err) => {
+          log::error!("Failed to watch user keymap: {err}");
+          let _ = app.handle().emit("keymap://watch-failed", err);
+        }
       }
       Ok(())
     })

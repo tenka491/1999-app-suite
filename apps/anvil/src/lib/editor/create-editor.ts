@@ -1,6 +1,6 @@
 import { EditorState } from '@codemirror/state';
 import { EditorView, keymap, lineNumbers, highlightActiveLine } from '@codemirror/view';
-import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
+import { standardKeymap, history } from '@codemirror/commands';
 
 // Reads CSS custom properties so a theme swap never requires touching this.
 const theme = EditorView.theme(
@@ -27,20 +27,16 @@ const theme = EditorView.theme(
 	{ dark: true }
 );
 
-// Deliberately minimal: no search/fold/autocomplete keymaps. Real bindings
-// come from the JSON keymap system in M1 — this is just enough to type,
-// move the cursor, and undo/redo while proving CodeMirror mounts.
+// standardKeymap only — cursor movement, basic text entry — not the fuller
+// defaultKeymap (which bundles in historyKeymap). Undo/redo are now
+// edit.undo/edit.redo commands dispatched through the JSON keymap, so they
+// stay rebindable; history() is still needed here as the state extension
+// those commands operate on.
 export function createEditorView(parent: HTMLElement, doc: string): EditorView {
 	return new EditorView({
 		state: EditorState.create({
 			doc,
-			extensions: [
-				lineNumbers(),
-				highlightActiveLine(),
-				history(),
-				keymap.of([...defaultKeymap, ...historyKeymap]),
-				theme
-			]
+			extensions: [lineNumbers(), highlightActiveLine(), history(), keymap.of(standardKeymap), theme]
 		}),
 		parent
 	});

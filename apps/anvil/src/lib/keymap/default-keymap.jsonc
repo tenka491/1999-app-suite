@@ -1,0 +1,15 @@
+// Anvil's default keymap. This file is bundled with the app and overwritten
+// on update — copy entries you want to change into your own keymap instead
+// (Preferences: Open Keymap) rather than editing this one.
+//
+// Sparse on purpose: only commands that exist so far are bound. The rest of
+// the PRD's default keybinding table (§6) fills in as each milestone lands
+// the command it's for.
+[
+	{ "keys": ["mod+shift+p"], "command": "palette.show" },
+	{ "keys": ["mod+s"], "command": "file.save" },
+	{ "keys": ["mod+shift+s"], "command": "file.save_as" },
+	{ "keys": ["mod+z"], "command": "edit.undo" },
+	{ "keys": ["mod+shift+z"], "command": "edit.redo" },
+	{ "keys": ["ctrl+y"], "command": "edit.redo", "platform": "linux" }
+]

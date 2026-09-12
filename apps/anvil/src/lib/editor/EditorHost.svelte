@@ -1,18 +1,18 @@
 <script lang="ts">
-	import type { EditorView } from '@codemirror/view';
 	import { createEditorView } from './create-editor';
+	import { setActiveView } from '../workspace/active-view.svelte';
 
-	let {
-		doc = '',
-		view = $bindable(null)
-	}: { doc?: string; view?: EditorView | null } = $props();
+	let { doc = '' }: { doc?: string } = $props();
 
 	let container: HTMLDivElement;
 
 	$effect(() => {
 		const editorView = createEditorView(container, doc);
-		view = editorView;
-		return () => editorView.destroy();
+		setActiveView(editorView);
+		return () => {
+			setActiveView(null);
+			editorView.destroy();
+		};
 	});
 </script>
 

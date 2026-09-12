@@ -1,62 +1,19 @@
 <script lang="ts">
-	import type { EditorView } from '@codemirror/view';
 	import EditorHost from '$lib/editor/EditorHost.svelte';
-	import { openFileDialog, writeFile, saveFileAsDialog } from '$lib/workspace/file-io';
+	import { run, isRunning } from '$lib/commands/registry.svelte';
+	import { getCurrentFilePath } from '$lib/workspace/current-file.svelte';
 
-	let view = $state<EditorView | null>(null);
-	let currentPath = $state<string | null>(null);
-	let initialDoc = $state('');
-	let isBusy = $state(false);
-	let errorMessage = $state<string | null>(null);
-
-	// Inline message as a stopgap — the real Toast component lands with the
-	// rest of the workspace UI in M2.
-	async function handleOpen() {
-		if (isBusy) return;
-		isBusy = true;
-		errorMessage = null;
-		try {
-			const result = await openFileDialog();
-			if (!result) return;
-			currentPath = result.path;
-			initialDoc = result.contents;
-		} catch (err) {
-			errorMessage = `Couldn't open file: ${err}`;
-		} finally {
-			isBusy = false;
-		}
-	}
-
-	async function handleSave() {
-		if (isBusy || !view) return;
-		isBusy = true;
-		errorMessage = null;
-		try {
-			const contents = view.state.doc.toString();
-			if (currentPath) {
-				await writeFile(currentPath, contents);
-			} else {
-				currentPath = await saveFileAsDialog(contents);
-			}
-		} catch (err) {
-			errorMessage = `Couldn't save file: ${err}`;
-		} finally {
-			isBusy = false;
-		}
-	}
+	const currentPath = $derived(getCurrentFilePath());
 </script>
 
 <div class="app">
 	<header class="toolbar">
-		<button onclick={handleOpen} disabled={isBusy}>Open</button>
-		<button onclick={handleSave} disabled={isBusy}>Save</button>
-		{#if errorMessage}
-			<span class="error">{errorMessage}</span>
-		{/if}
+		<button onclick={() => run('file.open')} disabled={isRunning('file.open')}>Open</button>
+		<button onclick={() => run('file.save')} disabled={isRunning('file.save')}>Save</button>
 		<span class="path">{currentPath ?? 'Untitled'}</span>
 	</header>
 	<main class="editor">
-		<EditorHost doc={initialDoc} bind:view />
+		<EditorHost />
 	</main>
 </div>
 
@@ -73,10 +30,6 @@
 		padding: var(--space-2) var(--space-3);
 		border-bottom: 1px solid var(--color-border);
 		background: var(--color-bg-elevated);
-	}
-	.error {
-		color: var(--color-danger);
-		font-size: 12px;
 	}
 	.path {
 		color: var(--color-fg-muted);
