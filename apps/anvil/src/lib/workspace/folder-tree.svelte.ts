@@ -6,6 +6,7 @@ import {
 	watchDirectory,
 	unwatchDirectory,
 	unwatchAllDirectories,
+	indexWorkspace,
 	type DirEntry
 } from './file-io';
 
@@ -37,6 +38,7 @@ export async function openFolder(): Promise<void> {
 	expandedPaths.add(path);
 	await loadChildren(path);
 	await watchDirectory(path);
+	await indexWorkspace(path); // built once here so Goto Anything (mod+p) isn't the first walk
 }
 
 export async function closeFolder(): Promise<void> {

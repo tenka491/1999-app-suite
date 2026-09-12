@@ -52,3 +52,21 @@ export async function unwatchDirectory(path: string): Promise<void> {
 export async function unwatchAllDirectories(): Promise<void> {
 	await invoke('unwatch_all_directories');
 }
+
+export async function indexWorkspace(root: string): Promise<number> {
+	return invoke<number>('index_workspace', { root });
+}
+
+export interface SearchResult {
+	name: string;
+	path: string;
+	relativePath: string;
+}
+
+export async function searchFiles(root: string, query: string): Promise<SearchResult[]> {
+	const results = await invoke<{ name: string; path: string; relative_path: string }[]>('search_files', {
+		root,
+		query
+	});
+	return results.map((r) => ({ name: r.name, path: r.path, relativePath: r.relative_path }));
+}

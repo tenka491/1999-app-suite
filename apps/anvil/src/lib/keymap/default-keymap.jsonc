@@ -18,5 +18,7 @@
 	{ "keys": ["ctrl+tab"], "command": "tab.next" },
 	{ "keys": ["ctrl+shift+tab"], "command": "tab.prev" },
 	{ "keys": ["mod+k", "mod+o"], "command": "workspace.open_folder" },
-	{ "keys": ["mod+k", "mod+b"], "command": "sidebar.toggle" }
+	{ "keys": ["mod+k", "mod+b"], "command": "sidebar.toggle" },
+	{ "keys": ["mod+p"], "command": "goto.anything" },
+	{ "keys": ["ctrl+g"], "command": "goto.line" }
 ]

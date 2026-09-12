@@ -4,12 +4,13 @@
 	import { getKeybindingLabel } from '../keymap/keymap-store.svelte';
 	import { fuzzyScore } from './fuzzy';
 	import type { Command } from '../commands/types';
+	import CommandBar from './CommandBar.svelte';
 
 	let query = $state('');
 	let selectedIndex = $state(0);
 	let inputEl: HTMLInputElement | undefined = $state();
 
-	const results = $derived.by(() => {
+	const matchingCommands = $derived.by(() => {
 		const recent = getRecentCommandIds();
 
 		const scored = listCommands()
@@ -33,7 +34,7 @@
 	});
 
 	$effect(() => {
-		results;
+		matchingCommands;
 		selectedIndex = 0;
 	});
 
@@ -58,7 +59,7 @@
 		} else if (event.key === 'ArrowDown') {
 			event.preventDefault();
 			event.stopPropagation();
-			selectedIndex = Math.min(selectedIndex + 1, results.length - 1);
+			selectedIndex = Math.min(selectedIndex + 1, matchingCommands.length - 1);
 		} else if (event.key === 'ArrowUp') {
 			event.preventDefault();
 			event.stopPropagation();
@@ -66,74 +67,39 @@
 		} else if (event.key === 'Enter') {
 			event.preventDefault();
 			event.stopPropagation();
-			const command = results[selectedIndex];
+			const command = matchingCommands[selectedIndex];
 			if (command) selectAndRun(command);
 		}
 	}
 </script>
 
-{#if isPaletteOpen()}
-	<div class="overlay" onclick={closePalette} role="presentation">
-		<div class="palette" onclick={(event) => event.stopPropagation()} role="presentation">
-			<input
-				bind:this={inputEl}
-				bind:value={query}
-				onkeydown={onKeydown}
-				placeholder="Type a command…"
-				aria-label="Command palette"
-			/>
-			<ul>
-				{#each results as command, index (command.id)}
-					<li class:selected={index === selectedIndex}>
-						<button onclick={() => selectAndRun(command)}>
-							<span class="title">{command.title}</span>
-							{#if getKeybindingLabel(command.id)}
-								<span class="keys">{getKeybindingLabel(command.id)}</span>
-							{/if}
-						</button>
-					</li>
-				{:else}
-					<li class="empty">No matching commands</li>
-				{/each}
-			</ul>
-		</div>
-	</div>
-{/if}
+<CommandBar
+	open={isPaletteOpen()}
+	onDismiss={closePalette}
+	bind:inputEl
+	bind:value={query}
+	placeholder="Type a command…"
+	{onKeydown}
+>
+	{#snippet results()}
+		<ul>
+			{#each matchingCommands as command, index (command.id)}
+				<li class:selected={index === selectedIndex}>
+					<button onclick={() => selectAndRun(command)}>
+						<span class="title">{command.title}</span>
+						{#if getKeybindingLabel(command.id)}
+							<span class="keys">{getKeybindingLabel(command.id)}</span>
+						{/if}
+					</button>
+				</li>
+			{:else}
+				<li class="empty">No matching commands</li>
+			{/each}
+		</ul>
+	{/snippet}
+</CommandBar>
 
 <style lang="scss">
-	.overlay {
-		position: fixed;
-		inset: 0;
-		display: flex;
-		justify-content: center;
-		padding-top: 15vh;
-		background: rgba(0, 0, 0, 0.4);
-		z-index: 200;
-	}
-	.palette {
-		width: min(560px, 90vw);
-		max-height: 60vh;
-		display: flex;
-		flex-direction: column;
-		background: var(--color-bg-elevated);
-		border: 1px solid var(--color-border);
-		border-radius: 6px;
-		overflow: hidden;
-		box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
-	}
-	input {
-		padding: var(--space-2);
-		border: none;
-		border-bottom: 1px solid var(--color-border);
-		background: transparent;
-		color: var(--color-fg);
-		font: inherit;
-		font-size: 15px;
-
-		&:focus {
-			outline: none;
-		}
-	}
 	ul {
 		list-style: none;
 		overflow-y: auto;

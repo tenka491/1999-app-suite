@@ -10,6 +10,8 @@
 	import Toast from '$lib/ui/Toast.svelte';
 	import Palette from '$lib/ui/Palette.svelte';
 	import ConfirmModal from '$lib/ui/ConfirmModal.svelte';
+	import GotoAnything from '$lib/ui/GotoAnything.svelte';
+	import GotoLine from '$lib/ui/GotoLine.svelte';
 
 	let { children } = $props();
 
@@ -53,5 +55,7 @@
 
 {@render children()}
 <Palette />
+<GotoAnything />
+<GotoLine />
 <Toast />
 <ConfirmModal />

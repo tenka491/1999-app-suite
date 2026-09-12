@@ -285,3 +285,51 @@ this conversation if setting up a new dev machine.
   mid-milestone report caught that regression immediately. Real fix: no delay on the
   single click; the double-click handler awaits that same in-flight promise before
   promoting, so it's correctly sequenced instead of racing.
+
+## M3 — Goto Anything (done)
+
+**What was built**
+
+- `search.rs`: a file index built once per folder-open (`ignore`-crate walk, same
+  hidden-name rules as the sidebar) and cached in Tauri-managed state, matched against
+  per-keystroke with `nucleo-matcher`. Building the index once and only re-matching
+  per keystroke (rather than walking the tree on every keystroke) is what keeps typing
+  responsive on a large repo — matching the PRD's explicit "no visible lag on ~20k
+  files" bar.
+- Goto Anything (`mod+p`): fuzzy file search, Enter opens as a **permanent** tab (the
+  documented F2.1 exception — preview is only for casual sidebar browsing), plus the
+  `:42` stretch goal (a trailing `:42` jumps to that line on open).
+- `goto.line` (`ctrl+g`): jump to a line in the current file.
+- `CommandBar.svelte`: a shared top-anchored bar (Sublime/VS Code style) extracted
+  for the palette, Goto Anything, and Goto Line — one visual language instead of three
+  near-duplicate overlay implementations. Went through a couple of rounds of
+  mid-milestone design feedback: dropped the heavy full-screen dark backdrop, moved
+  the focus glow from the whole bar onto just the input, and made the bar narrower
+  when it has no results dropdown under it (Goto Line).
+- `isAnyModalOpen()` (`ui/modal-state.svelte.ts`): the global keymap resolver's
+  "don't handle keys while an overlay owns them" check now covers all four overlays
+  (palette, Goto Anything, Goto Line, the confirm modal) from one place instead of
+  growing a longer import list on every new overlay.
+
+**Key modules**
+
+| Path | Purpose |
+|---|---|
+| `apps/anvil/src-tauri/src/search.rs` | File index + `nucleo-matcher` search |
+| `apps/anvil/src/lib/ui/CommandBar.svelte` | Shared bar shell (palette/Goto Anything/Goto Line) |
+| `apps/anvil/src/lib/ui/GotoAnything.svelte`, `GotoLine.svelte` | The two new overlays |
+| `apps/anvil/src/lib/editor/goto-line.ts` | `jumpToLine()`, shared by both line-jump paths |
+| `apps/anvil/src/lib/ui/modal-state.svelte.ts` | Aggregated "is any overlay open" check |
+
+**Deviations, and why**
+
+- **The file index isn't invalidated by the file watcher.** A stale index just means a
+  newly created file won't show up in Goto Anything until the next folder-open —
+  wiring the existing per-directory watchers up to a full-index rebuild is real work
+  (would need a recursive watch or watching every directory, not just expanded ones)
+  that isn't justified yet.
+- **`Pattern::match_list` runs matching on the calling thread** (nucleo-matcher's own
+  docs recommend the full async `nucleo` crate for large-scale interactive apps).
+  Acceptable here because Tauri commands already run off the main/UI thread by
+  default — a slow match delays the command's own response, it doesn't freeze the
+  window.

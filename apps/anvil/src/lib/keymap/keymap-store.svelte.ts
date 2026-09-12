@@ -7,7 +7,7 @@ import { formatKeystroke } from './keys';
 import { detectPlatform } from './platform';
 import { run } from '../commands/registry.svelte';
 import { showToast } from '../ui/toast.svelte';
-import { isPaletteOpen } from '../ui/palette-state.svelte';
+import { isAnyModalOpen } from '../ui/modal-state.svelte';
 import type { RawKeymapEntry, ResolvedKeymapEntry } from './types';
 
 const platform = detectPlatform();
@@ -90,9 +90,9 @@ export function getKeybindingLabel(commandId: string): string | null {
 }
 
 export function handleGlobalKeydown(event: KeyboardEvent): void {
-	// While the palette (or, later, any other modal) is open, it owns its own
-	// keyboard handling — don't also run keybindings underneath it.
-	if (isPaletteOpen()) return;
+	// While any overlay is open, it owns its own keyboard handling — don't
+	// also run keybindings underneath it.
+	if (isAnyModalOpen()) return;
 	const result = resolver.handleKeyEvent(event);
 	if (result.type === 'match') {
 		event.preventDefault();

@@ -1,5 +1,6 @@
 mod config;
 mod fs;
+mod search;
 mod watch;
 mod workspace;
 
@@ -10,6 +11,7 @@ pub fn run() {
   tauri::Builder::default()
     .plugin(tauri_plugin_dialog::init())
     .manage(workspace::WatchedDirs::new())
+    .manage(search::FileIndex::new())
     .invoke_handler(tauri::generate_handler![
       fs::read_file,
       fs::write_file,
@@ -17,7 +19,9 @@ pub fn run() {
       workspace::list_directory,
       workspace::watch_directory_cmd,
       workspace::unwatch_directory_cmd,
-      workspace::unwatch_all_directories
+      workspace::unwatch_all_directories,
+      search::index_workspace,
+      search::search_files
     ])
     .setup(|app| {
       if cfg!(debug_assertions) {
