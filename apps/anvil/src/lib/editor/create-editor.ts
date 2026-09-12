@@ -1,3 +1,4 @@
+import type { Extension } from '@codemirror/state';
 import { EditorState } from '@codemirror/state';
 import { EditorView, keymap, lineNumbers, highlightActiveLine } from '@codemirror/view';
 import { standardKeymap, history } from '@codemirror/commands';
@@ -32,12 +33,18 @@ const theme = EditorView.theme(
 // edit.undo/edit.redo commands dispatched through the JSON keymap, so they
 // stay rebindable; history() is still needed here as the state extension
 // those commands operate on.
-export function createEditorView(parent: HTMLElement, doc: string): EditorView {
+export function baseExtensions(): Extension[] {
+	return [lineNumbers(), highlightActiveLine(), history(), keymap.of(standardKeymap), theme];
+}
+
+/** Mounts a single, long-lived EditorView. Per §4.1a, each Document owns its
+ *  own EditorState; switching tabs calls `view.setState(doc.editorState)`
+ *  (see workspace-state.svelte.ts) rather than destroying and recreating the
+ *  view. This call just gives that view somewhere to live before the first
+ *  document has loaded. */
+export function mountEditorView(parent: HTMLElement): EditorView {
 	return new EditorView({
-		state: EditorState.create({
-			doc,
-			extensions: [lineNumbers(), highlightActiveLine(), history(), keymap.of(standardKeymap), theme]
-		}),
+		state: EditorState.create({ extensions: baseExtensions() }),
 		parent
 	});
 }

@@ -1,17 +1,15 @@
 <script lang="ts">
-	import { createEditorView } from './create-editor';
+	import { mountEditorView } from './create-editor';
 	import { setActiveView } from '../workspace/active-view.svelte';
-
-	let { doc = '' }: { doc?: string } = $props();
 
 	let container: HTMLDivElement;
 
 	$effect(() => {
-		const editorView = createEditorView(container, doc);
-		setActiveView(editorView);
+		const view = mountEditorView(container);
+		setActiveView(view);
 		return () => {
 			setActiveView(null);
-			editorView.destroy();
+			view.destroy();
 		};
 	});
 </script>

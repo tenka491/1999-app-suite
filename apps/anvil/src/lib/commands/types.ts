@@ -1,10 +1,11 @@
 import type { EditorView } from '@codemirror/view';
+import type { Document, Pane } from '../workspace/types';
 
-/** Kept minimal for now — just the active view. The fuller shape from PRD
- *  §4.1a (`{ view, doc, pane, workspace }`) is real M2 work; expanding this
- *  early would mean building the document/pane model prematurely. */
 export interface CommandContext {
+	/** The active pane's active view. */
 	view: EditorView | null;
+	doc: Document | null;
+	pane: Pane;
 }
 
 export interface Command {

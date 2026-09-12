@@ -16,6 +16,11 @@ let defaultEntries: RawKeymapEntry[] = [];
 let userEntries: RawKeymapEntry[] = [];
 let resolvedEntries = $state<ResolvedKeymapEntry[]>([]);
 let resolver: KeymapResolver = createKeymapResolver([]);
+let pendingChordLabel = $state<string | null>(null);
+
+export function getPendingChordLabel(): string | null {
+	return pendingChordLabel;
+}
 
 function rebuild(): void {
 	// Build from the local value, not by reading resolvedEntries back after
@@ -91,8 +96,12 @@ export function handleGlobalKeydown(event: KeyboardEvent): void {
 	const result = resolver.handleKeyEvent(event);
 	if (result.type === 'match') {
 		event.preventDefault();
+		pendingChordLabel = null;
 		if (result.command) run(result.command, result.args);
 	} else if (result.type === 'pending') {
 		event.preventDefault();
+		pendingChordLabel = result.pendingKeys.map((k) => formatKeystroke(k, platform)).join(' ');
+	} else {
+		pendingChordLabel = null;
 	}
 }

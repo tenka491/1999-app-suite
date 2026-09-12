@@ -7,9 +7,16 @@
 // the command it's for.
 [
 	{ "keys": ["mod+shift+p"], "command": "palette.show" },
+	{ "keys": ["mod+n"], "command": "file.new" },
 	{ "keys": ["mod+s"], "command": "file.save" },
 	{ "keys": ["mod+shift+s"], "command": "file.save_as" },
 	{ "keys": ["mod+z"], "command": "edit.undo" },
 	{ "keys": ["mod+shift+z"], "command": "edit.redo" },
-	{ "keys": ["ctrl+y"], "command": "edit.redo", "platform": "linux" }
+	{ "keys": ["ctrl+y"], "command": "edit.redo", "platform": "linux" },
+	{ "keys": ["mod+w"], "command": "tab.close" },
+	{ "keys": ["mod+shift+t"], "command": "tab.reopen_closed" },
+	{ "keys": ["ctrl+tab"], "command": "tab.next" },
+	{ "keys": ["ctrl+shift+tab"], "command": "tab.prev" },
+	{ "keys": ["mod+k", "mod+o"], "command": "workspace.open_folder" },
+	{ "keys": ["mod+k", "mod+b"], "command": "sidebar.toggle" }
 ]

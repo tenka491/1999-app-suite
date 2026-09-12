@@ -1,4 +1,6 @@
+import { SvelteSet } from 'svelte/reactivity';
 import { getActiveView } from '../workspace/active-view.svelte';
+import { getActiveDocument, getActivePane } from '../workspace/workspace-state.svelte';
 import { showToast } from '../ui/toast.svelte';
 import type { Command, CommandContext } from './types';
 
@@ -8,7 +10,10 @@ interface RegistryEntry {
 }
 
 const commands = new Map<string, RegistryEntry>();
-const runningIds = $state<Set<string>>(new Set());
+// Plain $state(new Set()) doesn't make .add()/.delete() reactive — same gap
+// as Map (see the SvelteMap note in workspace-state.svelte.ts). isRunning()
+// backs the toolbar buttons' `disabled` state, so this needs SvelteSet.
+const runningIds = new SvelteSet<string>();
 const recentIds = $state<string[]>([]);
 const MAX_RECENT = 10;
 
@@ -48,7 +53,7 @@ function recordUsage(id: string): void {
 }
 
 function buildContext(): CommandContext {
-	return { view: getActiveView() };
+	return { view: getActiveView(), doc: getActiveDocument(), pane: getActivePane() };
 }
 
 /** The only way UI should trigger an action — `run("file.save")`, never a
