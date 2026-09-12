@@ -12,6 +12,7 @@
 	import ConfirmModal from '$lib/ui/ConfirmModal.svelte';
 	import GotoAnything from '$lib/ui/GotoAnything.svelte';
 	import GotoLine from '$lib/ui/GotoLine.svelte';
+	import FindBar from '$lib/ui/FindBar.svelte';
 
 	let { children } = $props();
 
@@ -57,5 +58,6 @@
 <Palette />
 <GotoAnything />
 <GotoLine />
+<FindBar />
 <Toast />
 <ConfirmModal />

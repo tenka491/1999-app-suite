@@ -1,8 +1,12 @@
 import type { Extension } from '@codemirror/state';
 import { EditorState } from '@codemirror/state';
-import { EditorView, keymap, lineNumbers, highlightActiveLine } from '@codemirror/view';
+import { EditorView, keymap, lineNumbers, highlightActiveLine, drawSelection } from '@codemirror/view';
 import { standardKeymap, history } from '@codemirror/commands';
+import { search } from '@codemirror/search';
 import { syntaxHighlightExtension } from './syntax-highlight';
+import { detectPlatform } from '../keymap/platform';
+
+const platform = detectPlatform();
 
 // Reads CSS custom properties so a theme swap never requires touching this.
 const theme = EditorView.theme(
@@ -41,7 +45,26 @@ export function baseExtensions(): Extension[] {
 		history(),
 		keymap.of(standardKeymap),
 		theme,
-		syntaxHighlightExtension
+		syntaxHighlightExtension,
+		// Draws selections/cursors via DOM instead of the native browser
+		// Selection API, which only reliably supports one range — required
+		// for multiple cursors (F5) to render correctly, especially on
+		// WebKit (this app's Linux target).
+		drawSelection(),
+		// Without this, EditorState silently collapses every transaction's
+		// selection down to a single range (tr.newSelection.asSingle()) —
+		// found the hard way: addCursorAbove/selectNextOccurrence/etc. all
+		// appeared to "do nothing" because whatever they added got discarded
+		// by state.update() itself, not by anything in F5's own commands.
+		EditorState.allowMultipleSelections.of(true),
+		// The search *state*, not CodeMirror's own search panel/keymap — the
+		// find bar (F6) is our own Svelte component reading/writing this via
+		// setSearchQuery/getSearchQuery.
+		search(),
+		// Mod-click adds a cursor (F5), matching the mod+d/mod+k mod+d keyboard path.
+		EditorView.clickAddsSelectionRange.of((event) =>
+			platform === 'macos' ? event.metaKey : event.ctrlKey
+		)
 	];
 }
 

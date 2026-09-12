@@ -392,3 +392,47 @@ this conversation if setting up a new dev machine.
   this class of bug exists if another named key ever misbehaves the same way.
 - **The confirm modal's message didn't wrap a long file path** — no `overflow-wrap`,
   so an unbroken path string overflowed the dialog instead of wrapping.
+
+## M4, check-in 2 — Multiple cursors + find/replace (done)
+
+**What was built**
+
+- All of F5: `selection.find_next_occurrence` (`selectNextOccurrence`), `selection.find_all`
+  (`selectSelectionMatches`), `selection.add_cursor_above`/`below` (`addCursorAbove`/
+  `addCursorBelow`), `selection.select_line` (`selectLine`), `selection.collapse`
+  (`simplifySelection`, bound to Escape) — mostly thin wrappers around existing
+  `@codemirror/commands`/`@codemirror/search` exports. Two needed custom
+  implementations since CodeMirror doesn't ship them: `selection.skip_occurrence`
+  (replace the last occurrence with the next one, rather than adding) and
+  `selection.split_into_lines` (one cursor per line from a multi-line selection).
+  Mod-click adds a cursor via `EditorView.clickAddsSelectionRange`.
+- All of F6: a `FindBar.svelte` docked top-right (not a `CommandBar` overlay — it
+  coexists with the editor rather than taking over input, so F3/mod+g keep working
+  globally while it's open), backed by `@codemirror/search`'s state
+  (`setSearchQuery`/`findNext`/`findPrevious`/`replaceNext`/`replaceAll`) rather than
+  reimplementing search. Case-sensitive/whole-word/regex toggles, live match count.
+- `drawSelection()` added to `baseExtensions()` — draws selections via DOM instead of
+  the native browser Selection API, which doesn't reliably support multiple ranges
+  (relevant here since this app runs on WebKit).
+
+**Bugs hit and fixed:**
+
+- **The entire multi-cursor feature silently did nothing, and it had nothing to do
+  with any of F5's own command logic.** `EditorState.allowMultipleSelections` is off
+  by default, and when it's off `EditorState` silently reduces every transaction's
+  selection to its main range (`tr.newSelection.asSingle()`) — so `selectNextOccurrence`,
+  `addCursorAbove`, mod-click, all of it, were computing correct results that then got
+  discarded one layer down, at `state.update()` itself. Traced by probing
+  `@codemirror/search`'s and `@codemirror/state`'s actual source (not just the type
+  definitions) with a throwaway Vitest script outside the app entirely, which
+  isolated the bug to `state.update({ selection })` before any of our own code was
+  even in the picture. Fixed with one line: `EditorState.allowMultipleSelections.of(true)`
+  in `baseExtensions()`. Covered by a regression test.
+- **`find.show` didn't hide an already-visible replace row.** Deliberate at the time
+  (a comment reasoned "closing shouldn't feel destructive") but wrong per how the
+  user actually expects it to work: Ctrl+F should always mean *just* find, Ctrl+H
+  always means find+replace, not "whichever was open most recently." Fixed by having
+  `find.show` explicitly set `showReplace = false` instead of leaving it alone.
+- **The find bar didn't clear its text between opens** — closing and reopening it
+  kept whatever was previously typed, unlike every other overlay in the app (palette,
+  Goto Anything, Goto Line all reset on open). Missing reset effect, now added.

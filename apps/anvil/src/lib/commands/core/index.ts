@@ -5,6 +5,8 @@ import { paletteCommands } from './palette';
 import { tabCommands } from './tab';
 import { workspaceCommands } from './workspace';
 import { gotoCommands } from './goto';
+import { selectionCommands } from './selection';
+import { findCommands } from './find';
 
 export function registerCoreCommands(): void {
 	for (const command of [
@@ -13,7 +15,9 @@ export function registerCoreCommands(): void {
 		...paletteCommands,
 		...tabCommands,
 		...workspaceCommands,
-		...gotoCommands
+		...gotoCommands,
+		...selectionCommands,
+		...findCommands
 	]) {
 		register(command, 'core');
 	}
