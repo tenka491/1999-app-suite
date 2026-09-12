@@ -86,6 +86,16 @@ describe('eventToKeystroke', () => {
 		);
 		expect(fromEvent).toEqual(fromConfig);
 	});
+
+	it('matches Tab by code even when key is "Unidentified" (WebKitGTK Shift-Tab quirk)', () => {
+		// Confirmed live: WebKitGTK reports event.key as the literal string
+		// "Unidentified" for Shift-Tab specifically (likely an X11 ISO_Left_Tab
+		// keysym quirk), while event.code stays "Tab" regardless of shift.
+		const keystroke = eventToKeystroke(
+			fakeEvent({ key: 'Unidentified', code: 'Tab', shiftKey: true })
+		);
+		expect(keystroke).toEqual(parseKeystroke('shift+tab', 'linux'));
+	});
 });
 
 describe('formatKeystroke', () => {

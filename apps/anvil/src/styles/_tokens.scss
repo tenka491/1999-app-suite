@@ -18,4 +18,19 @@
 	--color-accent: #d7776a;
 	--color-danger: #e5484d;
 	--color-selection: #2a3f54;
+	--color-warm: #c99b73;
+	--color-type: #7dabf5;
+
+	// Syntax highlighting (F4). Mapped per the PRD's §F10 "1999 Dark" palette
+	// (accent → keywords, warm → strings, danger → numbers/constants, muted →
+	// comments) using the values already established above, rather than the
+	// exact hex codes in that table — changing the app's existing accent/bg
+	// colors to match verbatim is real theme-system work for M5, not a side
+	// effect of wiring up syntax highlighting now.
+	--syntax-keyword: var(--color-accent);
+	--syntax-string: var(--color-warm);
+	--syntax-number: var(--color-danger);
+	--syntax-comment: var(--color-fg-muted);
+	--syntax-type: var(--color-type);
+	--syntax-function: var(--color-type);
 }

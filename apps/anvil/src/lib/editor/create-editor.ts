@@ -2,6 +2,7 @@ import type { Extension } from '@codemirror/state';
 import { EditorState } from '@codemirror/state';
 import { EditorView, keymap, lineNumbers, highlightActiveLine } from '@codemirror/view';
 import { standardKeymap, history } from '@codemirror/commands';
+import { syntaxHighlightExtension } from './syntax-highlight';
 
 // Reads CSS custom properties so a theme swap never requires touching this.
 const theme = EditorView.theme(
@@ -34,7 +35,14 @@ const theme = EditorView.theme(
 // stay rebindable; history() is still needed here as the state extension
 // those commands operate on.
 export function baseExtensions(): Extension[] {
-	return [lineNumbers(), highlightActiveLine(), history(), keymap.of(standardKeymap), theme];
+	return [
+		lineNumbers(),
+		highlightActiveLine(),
+		history(),
+		keymap.of(standardKeymap),
+		theme,
+		syntaxHighlightExtension
+	];
 }
 
 /** Mounts a single, long-lived EditorView. Per §4.1a, each Document owns its

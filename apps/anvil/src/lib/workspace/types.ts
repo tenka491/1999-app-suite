@@ -11,6 +11,10 @@ export interface Document {
 	isDirty: boolean;
 	language: string;
 	lineEnding: LineEnding;
+	/** The content as of the last save (or load) — isDirty is computed by
+	 *  comparing against this, not just "has an edit ever happened", so
+	 *  undoing back to the saved state correctly clears the indicator. */
+	savedContent: string;
 }
 
 export interface Tab {

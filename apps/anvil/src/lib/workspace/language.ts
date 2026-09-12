@@ -16,7 +16,10 @@ const EXTENSION_LANGUAGE: Record<string, string> = {
 	rs: 'Rust',
 	ex: 'Elixir',
 	exs: 'Elixir',
-	heex: 'Elixir'
+	heex: 'Elixir',
+	php: 'PHP',
+	yaml: 'YAML',
+	yml: 'YAML'
 };
 
 export function detectLanguage(path: string | null): string {

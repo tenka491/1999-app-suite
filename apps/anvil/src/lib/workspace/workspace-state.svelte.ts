@@ -4,6 +4,7 @@ import { EditorView } from '@codemirror/view';
 import { baseExtensions } from '../editor/create-editor';
 import { getActiveView } from './active-view.svelte';
 import { detectLanguage } from './language';
+import { getLanguageSupport, languageCompartment } from '../editor/language-support';
 import { readFile, writeFile, saveAsDialog } from './file-io';
 import { askUnsavedChanges } from '../ui/confirm.svelte';
 import { setCursorInfo, resetCursorInfo } from '../editor/cursor-state.svelte';
@@ -31,11 +32,24 @@ let activePaneId = $state<string>(panes[0].id);
  *  it is more machinery than v1 needs (a deliberate simplification). */
 const closedTabHistory: string[] = [];
 
+// Length check first: comparing the full text on every keystroke would be
+// wasteful for a large file, but two lengths differing (the common case
+// while actively editing) rules it out without ever touching the content.
+function contentMatches(newState: EditorState, savedContent: string): boolean {
+	if (newState.doc.length !== savedContent.length) return false;
+	return newState.doc.toString() === savedContent;
+}
+
 function markDirty(docId: string, newState: EditorState): void {
 	const doc = documents.get(docId);
 	if (!doc) return;
-	documents.set(docId, { ...doc, editorState: newState, isDirty: true });
-	promoteDocumentTabs(docId); // an edit promotes a preview tab (F2.1)
+	// Compared against the saved content, not just "an edit happened" —
+	// otherwise undoing back to the last save never clears the indicator.
+	const isDirty = !contentMatches(newState, doc.savedContent);
+	documents.set(docId, { ...doc, editorState: newState, isDirty });
+	// An edit promotes a preview tab (F2.1) regardless of where it lands —
+	// undoing back to clean doesn't un-promote an already-permanent tab.
+	promoteDocumentTabs(docId);
 }
 
 function syncEditorState(docId: string, newState: EditorState): void {
@@ -43,11 +57,12 @@ function syncEditorState(docId: string, newState: EditorState): void {
 	if (doc) documents.set(docId, { ...doc, editorState: newState });
 }
 
-function createDocumentState(docId: string, contents: string): EditorState {
+function createDocumentState(docId: string, contents: string, path: string | null): EditorState {
 	return EditorState.create({
 		doc: contents,
 		extensions: [
 			...baseExtensions(),
+			languageCompartment.of(getLanguageSupport(path)),
 			EditorView.updateListener.of((update) => {
 				if (update.docChanged) markDirty(docId, update.state);
 				else if (update.state !== update.startState) syncEditorState(docId, update.state);
@@ -120,10 +135,11 @@ export function openDocument(
 	const document: Document = {
 		id: docId,
 		path,
-		editorState: createDocumentState(docId, contents),
+		editorState: createDocumentState(docId, contents, path),
 		isDirty: false,
 		language: detectLanguage(path),
-		lineEnding
+		lineEnding,
+		savedContent: contents
 	};
 	documents.set(docId, document);
 
@@ -146,14 +162,29 @@ export async function saveDocument(doc: Document, options: { forcePrompt?: boole
 	const contents = doc.editorState.doc.toString();
 	let path = doc.path;
 	let language = doc.language;
+	let editorState = doc.editorState;
+
 	if (!path || options.forcePrompt) {
 		const chosen = await saveAsDialog();
 		if (!chosen) return false;
+		const pathChanged = path !== chosen;
 		path = chosen;
 		language = detectLanguage(path);
+
+		// An untitled buffer (or one saved under a different extension) gets
+		// re-languaged in place — reconfiguring the compartment rather than
+		// rebuilding the whole state, since it's still the same document.
+		if (pathChanged) {
+			const view = getActiveView();
+			if (view && view.state === doc.editorState) {
+				view.dispatch({ effects: languageCompartment.reconfigure(getLanguageSupport(path)) });
+				editorState = view.state;
+			}
+		}
 	}
+
 	await writeFile(path, contents, doc.lineEnding);
-	documents.set(doc.id, { ...doc, path, language, isDirty: false });
+	documents.set(doc.id, { ...doc, path, language, editorState, isDirty: false, savedContent: contents });
 	promoteDocumentTabs(doc.id);
 	return true;
 }

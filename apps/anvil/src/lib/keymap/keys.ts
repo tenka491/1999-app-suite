@@ -4,6 +4,11 @@ import type { KeyEvent, Keystroke, Platform } from './types';
 // keyboard layout don't break bindings (PRD §4.3). Keyed by the code CodeMirror/
 // the DOM reports; the value is the canonical token used on both the config and
 // event side.
+//
+// Tab is included for a different reason: WebKitGTK reports event.key as the
+// literal string "Unidentified" for Shift-Tab specifically (likely an X11
+// ISO_Left_Tab keysym quirk) while event.code stays "Tab" either way — so Tab
+// has to be resolved by code too, or Shift-Tab silently fails to match anything.
 const CODE_TO_TOKEN: Record<string, string> = {
 	Slash: '/',
 	Backslash: '\\',
@@ -15,7 +20,8 @@ const CODE_TO_TOKEN: Record<string, string> = {
 	Period: '.',
 	Minus: '-',
 	Equal: '=',
-	Backquote: '`'
+	Backquote: '`',
+	Tab: 'tab'
 };
 
 const TOKEN_TO_CODE: Record<string, string> = Object.fromEntries(

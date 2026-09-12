@@ -20,5 +20,16 @@
 	{ "keys": ["mod+k", "mod+o"], "command": "workspace.open_folder" },
 	{ "keys": ["mod+k", "mod+b"], "command": "sidebar.toggle" },
 	{ "keys": ["mod+p"], "command": "goto.anything" },
-	{ "keys": ["ctrl+g"], "command": "goto.line" }
+	{ "keys": ["ctrl+g"], "command": "goto.line" },
+	{ "keys": ["ctrl+shift+k"], "command": "edit.delete_line" },
+	{ "keys": ["mod+shift+d"], "command": "edit.duplicate_line" },
+	{ "keys": ["ctrl+mod+up"], "command": "edit.move_line_up", "platform": "macos" },
+	{ "keys": ["ctrl+mod+down"], "command": "edit.move_line_down", "platform": "macos" },
+	{ "keys": ["ctrl+shift+up"], "command": "edit.move_line_up", "platform": "linux" },
+	{ "keys": ["ctrl+shift+down"], "command": "edit.move_line_down", "platform": "linux" },
+	{ "keys": ["mod+/"], "command": "edit.toggle_comment" },
+	{ "keys": ["mod+]"], "command": "edit.indent" },
+	{ "keys": ["mod+["], "command": "edit.outdent" },
+	{ "keys": ["tab"], "command": "edit.indent" },
+	{ "keys": ["shift+tab"], "command": "edit.outdent" }
 ]

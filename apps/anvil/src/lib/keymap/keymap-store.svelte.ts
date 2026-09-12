@@ -8,6 +8,7 @@ import { detectPlatform } from './platform';
 import { run } from '../commands/registry.svelte';
 import { showToast } from '../ui/toast.svelte';
 import { isAnyModalOpen } from '../ui/modal-state.svelte';
+import { getActiveView } from '../workspace/active-view.svelte';
 import type { RawKeymapEntry, ResolvedKeymapEntry } from './types';
 
 const platform = detectPlatform();
@@ -93,6 +94,14 @@ export function handleGlobalKeydown(event: KeyboardEvent): void {
 	// While any overlay is open, it owns its own keyboard handling — don't
 	// also run keybindings underneath it.
 	if (isAnyModalOpen()) return;
+	// Tab/Shift-Tab double as focus-navigation everywhere outside the editor
+	// (moving between toolbar buttons, sidebar entries, etc.) — the keymap
+	// only claims them for indent/outdent while the editor itself has focus,
+	// since this resolver is global rather than scoped to the editor.
+	// event.code, not event.key — WebKitGTK reports event.key as "Unidentified"
+	// for Shift-Tab specifically (see keys.ts), so checking key would silently
+	// only scope plain Tab and let Shift-Tab bypass this guard entirely.
+	if (event.code === 'Tab' && !getActiveView()?.hasFocus) return;
 	const result = resolver.handleKeyEvent(event);
 	if (result.type === 'match') {
 		event.preventDefault();

@@ -39,6 +39,7 @@
 		margin-bottom: var(--space-3);
 		color: var(--color-fg);
 		font-size: 14px;
+		overflow-wrap: break-word;
 	}
 	.actions {
 		display: flex;
