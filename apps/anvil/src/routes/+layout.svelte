@@ -1,6 +1,6 @@
 <script lang="ts">
 	import '../styles/app.scss';
-	import favicon from '$lib/assets/favicon.svg';
+	import favicon from '$lib/assets/favicon.png';
 	import { getCurrentWindow } from '@tauri-apps/api/window';
 	import { registerCoreCommands } from '$lib/commands/core';
 	import { initKeymap, teardownKeymap, handleGlobalKeydown } from '$lib/keymap/keymap-store.svelte';

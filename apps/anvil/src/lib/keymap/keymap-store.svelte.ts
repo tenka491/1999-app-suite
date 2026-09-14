@@ -102,6 +102,14 @@ export function handleGlobalKeydown(event: KeyboardEvent): void {
 	// for Shift-Tab specifically (see keys.ts), so checking key would silently
 	// only scope plain Tab and let Shift-Tab bypass this guard entirely.
 	if (event.code === 'Tab' && !getActiveView()?.hasFocus) return;
+	// OS key-repeat re-fires keydown for a held key. Feeding that into the
+	// resolver is never right: mid-chord it folds into the pending sequence
+	// as a bogus repeated key (e.g. holding mod+k a beat too long turns the
+	// pending [k] into [k, k], which matches nothing and silently resets —
+	// the chord has to be redone with no feedback as to why); for a
+	// single-key binding it would re-run the command for as long as the key
+	// stays down.
+	if (event.repeat) return;
 	const result = resolver.handleKeyEvent(event);
 	if (result.type === 'match') {
 		event.preventDefault();
