@@ -63,9 +63,8 @@ export interface SearchResult {
 	relativePath: string;
 }
 
-export async function searchFiles(root: string, query: string): Promise<SearchResult[]> {
+export async function searchFiles(query: string): Promise<SearchResult[]> {
 	const results = await invoke<{ name: string; path: string; relative_path: string }[]>('search_files', {
-		root,
 		query
 	});
 	return results.map((r) => ({ name: r.name, path: r.path, relativePath: r.relative_path }));

@@ -5,6 +5,7 @@
 	import { run } from '../commands/registry.svelte';
 	import { jumpToLine } from '../editor/goto-line';
 	import { getActiveView } from '../workspace/active-view.svelte';
+	import { showToast } from './toast.svelte';
 	import CommandBar from './CommandBar.svelte';
 
 	let query = $state('');
@@ -31,9 +32,14 @@
 			return;
 		}
 		const thisRequest = ++requestId;
-		searchFiles(root, search).then((found) => {
-			if (thisRequest === requestId) searchResults = found;
-		});
+		searchFiles(search)
+			.then((found) => {
+				if (thisRequest === requestId) searchResults = found;
+			})
+			.catch((err) => {
+				if (thisRequest === requestId) searchResults = [];
+				showToast(`Search failed: ${err}`, 'error');
+			});
 	});
 
 	$effect(() => {

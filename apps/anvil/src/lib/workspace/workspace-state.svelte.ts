@@ -174,11 +174,18 @@ export async function saveDocument(doc: Document, options: { forcePrompt?: boole
 		// An untitled buffer (or one saved under a different extension) gets
 		// re-languaged in place — reconfiguring the compartment rather than
 		// rebuilding the whole state, since it's still the same document.
+		// Built off doc.editorState directly (not the active view) so this
+		// still applies when saving a document that isn't the focused tab —
+		// e.g. saveAllDirtyDocuments() iterating tabs without switching them.
 		if (pathChanged) {
+			const reconfigure = doc.editorState.update({
+				effects: languageCompartment.reconfigure(getLanguageSupport(path))
+			});
+			editorState = reconfigure.state;
+
 			const view = getActiveView();
 			if (view && view.state === doc.editorState) {
-				view.dispatch({ effects: languageCompartment.reconfigure(getLanguageSupport(path)) });
-				editorState = view.state;
+				view.dispatch(reconfigure);
 			}
 		}
 	}

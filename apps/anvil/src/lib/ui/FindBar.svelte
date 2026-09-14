@@ -9,6 +9,7 @@
 	} from '@codemirror/search';
 	import { isFindBarOpen, isFindBarShowingReplace, closeFindBar } from './find-bar-state.svelte';
 	import { getActiveView } from '../workspace/active-view.svelte';
+	import { getCursorInfo } from '../editor/cursor-state.svelte';
 
 	let searchText = $state('');
 	let replaceText = $state('');
@@ -45,6 +46,11 @@
 	});
 
 	const matchInfo = $derived.by(() => {
+		// CodeMirror mutates view.state in place on every edit, which Svelte
+		// can't see — reading this reactive signal (bumped by the same
+		// updateListener on every docChanged/selectionSet) is what forces a
+		// recompute while the user types with Find still open.
+		getCursorInfo();
 		const view = getActiveView();
 		const query = currentQuery();
 		if (!view || !searchText || !query.valid) return null;
