@@ -32,6 +32,12 @@ pub fn read_user_keymap(app: AppHandle) -> Result<String, String> {
 	fs::read_to_string(&path).map_err(|err| err.to_string())
 }
 
+#[tauri::command]
+pub fn get_keymap_path(app: AppHandle) -> Result<String, String> {
+	let path = ensure_user_keymap(&app)?;
+	Ok(path.to_string_lossy().into_owned())
+}
+
 /// Kept alive for the life of the app via `app.manage()` — dropping it stops
 /// the underlying watch.
 pub struct KeymapWatcher(#[allow(dead_code)] RecommendedWatcher);

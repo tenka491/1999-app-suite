@@ -660,3 +660,89 @@ separate critical-CSS/accounting purpose unrelated to `emitCss`. Since nothing d
 consumes that particular lookup's result anymore, the failure has no visible effect, just
 log noise. Left as-is rather than spending more time silencing an SSR-only warning this
 close to done — revisit if it ever turns out to matter.
+
+## Pre-v1 cleanup — M3's missing cargo test coverage (closed)
+
+§8's non-functional requirements call for `cargo test` on the ignore-aware walk and
+fuzzy ranking; zero Rust tests existed anywhere in the crate until now. Split both
+`index_workspace` and `search_files` into a thin `#[tauri::command]` wrapper plus a
+plain, `tauri::State`-free function (`walk_workspace`, `fuzzy_match`) so each is
+directly unit-testable — command signatures unchanged, so this didn't touch the
+frontend at all. 7 new tests in `search.rs`: walk finds nested files, skips the
+`ALWAYS_HIDDEN` list, respects `.gitignore`; fuzzy match ranks an exact name above a
+buried substring match, matches against `relative_path` not the absolute path (a
+regression guard for the earlier fuzzy-search fix), excludes non-matches, truncates
+to 50.
+
+Two wrong assumptions caught by the tests themselves, not bugs in the code: `ignore`'s
+`WalkBuilder` only honors `.gitignore` inside an actual git repo by default (the test
+fixture needed a `.git/HEAD` marker), and its default `hidden(true)` filters dotfiles
+like `.gitignore` itself regardless of gitignore rules — the same default
+`list_directory` (`workspace.rs`) already relies on for the sidebar, confirmed here
+rather than changed.
+
+## Pre-v1 cleanup — preferences.open_keymap / open_default_keymap (closed)
+
+Both listed in §6 as palette-only, no-default-binding commands; scoped out of M5
+check-in 1 to stay focused on settings/theme, never picked back up until now.
+
+- `preferences.open_keymap`: identical shape to `preferences.open_settings` — a new
+  `get_keymap_path` Rust command (mirrors `get_settings_path`) plus a frontend command
+  that opens the real user `keymap.jsonc` via the existing `workspace.open_path` flow.
+- `preferences.open_default_keymap`: opens the *bundled* defaults as an untitled
+  reference buffer, not a real file — `default-keymap.jsonc` only exists as a raw
+  string inlined into the JS bundle at build time, not a standalone file a packaged
+  app could read from disk. Sublime's own "Keymap - Default" is genuinely read-only;
+  building read-only buffer support for this one reference view wasn't justified, so
+  editing this copy just doesn't do anything (it's untitled — Save As keeps a copy if
+  wanted). Opens as plain text rather than adding a language-override parameter to
+  `openDocument` for JSONC highlighting on a path-less document — the simpler option,
+  flagged here per the project's own "pick the simplest option, flag it" convention.
+
+## Pre-v1 cleanup — line-number alignment bug, attempt 2
+
+The `--font-size-editor` CSS custom property + `requestMeasure()` approach (logged as
+a known issue in M5 check-in 2) didn't fully fix it per live testing. Replaced with a
+real `fontSizeCompartment` in `editor-settings.ts` — the same kind of Compartment tab
+size/word wrap already use — reconfigured via a new `applyFontSizeToAllDocuments`
+(workspace-state.svelte.ts), generalized out of `applyEditorSettingsToAllDocuments`'s
+body into a shared `reconfigureCompartmentOnAllDocuments` helper so both share the
+exact same untrack()-wrapped every-open-document propagation.
+
+Why this should actually fix it where the CSS-var approach didn't: CodeMirror
+explicitly checks whether the `theme` facet changed on every dispatched transaction to
+decide whether to force a full remeasure (`mustMeasureContent`). An external
+`style.setProperty()` call has no such hook — CodeMirror has no way to know the font
+size changed unless something tells it via an actual transaction, which
+`requestMeasure()` alone doesn't fully substitute for. Reconfiguring a compartment
+*is* a real transaction, going through the same well-tested path as every other
+settings-driven CodeMirror change in this app.
+
+**REVERTED — caused data-appearing-to-disappear on every font-size keypress.** Live
+testing found `mod+-`/`mod+=` made the open file's content vanish from the editor,
+uncapturable by undo, with the tab never marked dirty. The dirty flag staying clean is
+the important clue: a real content-deleting *edit* transaction always flips it via the
+update listener's `docChanged` check, so this reads as the *view* rendering a
+mismatched/stale `EditorState` rather than the document's actual text being destroyed
+— and since nothing in this code path ever calls `writeFile`/`saveDocument`, the file
+on disk should be unaffected regardless (start `tauri dev` fresh, don't save, and the
+real content should still be there on reopen — not independently confirmed here, no
+GUI access).
+
+Root cause not found before reverting — chose safety over continuing to debug live
+against the user's real open files. `reconfigureCompartmentOnAllDocuments`,
+`applyFontSizeToAllDocuments`, and `fontSizeCompartment` were all removed; every file
+touched was diffed back to byte-identical with the last commit to confirm a clean,
+exact revert (confirmed — `git diff` against HEAD showed nothing for any of the five
+files this attempt touched). `applyEditorSettingsToAllDocuments` (tab size / word
+wrap, the pre-existing, already-committed sibling this was generalized from) was left
+untouched and has not been reported to exhibit the same symptom — worth keeping in
+mind for the next attempt: either something specific to *this* addition is at fault,
+or the shared mechanism has a latent bug that tab-size/word-wrap changes just haven't
+happened to trigger yet.
+
+Status: reverted to the pre-existing `--font-size-editor` CSS-var + `requestMeasure()`
+approach (imperfect alignment, but not observed to be unsafe). Line-number alignment
+remains an open known issue. Next attempt should be validated in a throwaway,
+isolated test (mirroring the M4 multi-cursor bug's own debugging approach — see that
+entry) before ever touching a real open document again.

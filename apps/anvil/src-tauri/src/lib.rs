@@ -18,6 +18,7 @@ pub fn run() {
       fs::write_file,
       fs::get_file_size,
       config::read_user_keymap,
+      config::get_keymap_path,
       config::read_user_settings,
       config::write_user_settings,
       config::get_settings_path,

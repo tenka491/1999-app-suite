@@ -90,6 +90,16 @@ export function getKeybindingLabel(commandId: string): string | null {
 	return matches.map((entry) => entry.keys.map((k) => formatKeystroke(k, platform)).join(' ')).join(', ');
 }
 
+export async function getKeymapPath(): Promise<string> {
+	return invoke<string>('get_keymap_path');
+}
+
+/** The bundled defaults, verbatim — for preferences.open_default_keymap's
+ *  reference view. Same raw import already used to load them at startup. */
+export function getDefaultKeymapSource(): string {
+	return defaultKeymapSource;
+}
+
 export function handleGlobalKeydown(event: KeyboardEvent): void {
 	// While any overlay is open, it owns its own keyboard handling — don't
 	// also run keybindings underneath it.
