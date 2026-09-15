@@ -6,7 +6,7 @@ import { mergeKeymaps, createKeymapResolver, type KeymapResolver } from './resol
 import { formatKeystroke } from './keys';
 import { detectPlatform } from './platform';
 import { run } from '../commands/registry.svelte';
-import { showToast } from '../ui/toast.svelte';
+import { showToast } from '../ui/toast-store.svelte';
 import { isAnyModalOpen } from '../ui/modal-state.svelte';
 import { getActiveView } from '../workspace/active-view.svelte';
 import type { RawKeymapEntry, ResolvedKeymapEntry } from './types';

@@ -10,7 +10,7 @@ import { detectLanguage } from './language';
 import { getLanguageSupport, languageCompartment } from '../editor/language-support';
 import { readFile, writeFile, saveAsDialog, watchFile, unwatchFile } from './file-io';
 import { askUnsavedChanges } from '../ui/confirm.svelte';
-import { showToast } from '../ui/toast.svelte';
+import { showToast } from '../ui/toast-store.svelte';
 import { setCursorInfo, resetCursorInfo } from '../editor/cursor-state.svelte';
 import { getSettings } from '../settings/settings-store.svelte';
 import type { Settings } from '../settings/types';

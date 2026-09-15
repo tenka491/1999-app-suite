@@ -1,7 +1,7 @@
 import { SvelteSet } from 'svelte/reactivity';
 import { getActiveView } from '../workspace/active-view.svelte';
 import { getActiveDocument, getActivePane } from '../workspace/workspace-state.svelte';
-import { showToast } from '../ui/toast.svelte';
+import { showToast } from '../ui/toast-store.svelte';
 import type { Command, CommandContext } from './types';
 
 interface RegistryEntry {

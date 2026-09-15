@@ -4,7 +4,7 @@ import { modify, applyEdits } from 'jsonc-parser';
 import defaultSettingsSource from './default-settings.jsonc?raw';
 import { parseSettingsSource } from './parse';
 import { SETTINGS_KEYS, type Settings } from './types';
-import { showToast } from '../ui/toast.svelte';
+import { showToast } from '../ui/toast-store.svelte';
 
 // Used only if the bundled default-settings.jsonc itself fails to parse —
 // a build-time bug, not something a user should ever see (same reasoning as

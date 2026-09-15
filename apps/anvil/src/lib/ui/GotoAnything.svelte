@@ -5,7 +5,7 @@
 	import { run } from '../commands/registry.svelte';
 	import { jumpToLine } from '../editor/goto-line';
 	import { getActiveView } from '../workspace/active-view.svelte';
-	import { showToast } from './toast.svelte';
+	import { showToast } from './toast-store.svelte';
 	import CommandBar from './CommandBar.svelte';
 
 	let query = $state('');
