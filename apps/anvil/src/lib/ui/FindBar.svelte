@@ -1,7 +1,9 @@
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import {
 		SearchQuery,
 		setSearchQuery,
+		getSearchQuery,
 		findNext,
 		findPrevious,
 		replaceNext,
@@ -31,10 +33,22 @@
 	// Keep CodeMirror's search state in sync with the bar's own inputs —
 	// findNext/findPrevious/replaceNext/replaceAll all read from that state
 	// rather than taking a query argument directly.
+	//
+	// The dispatch is wrapped in untrack(): workspace-state.svelte.ts's update
+	// listener does a read-then-write on the shared `documents` SvelteMap
+	// (syncEditorState persists the post-dispatch state so it survives tab
+	// switches) as a *synchronous* side effect of this exact dispatch call.
+	// Without untrack(), Svelte attributes that read+write to this effect
+	// itself (it's all still on the same call stack), sees its own dependency
+	// change, and reruns — an infinite effect_update_depth_exceeded loop on
+	// every keystroke. untrack() stops Svelte from tracking what happens
+	// inside the dispatch, which is exactly what's needed here: this effect
+	// should re-run when searchText/etc. change, not when something three
+	// layers down the dispatch happens to touch.
 	$effect(() => {
 		const query = currentQuery();
 		const view = getActiveView();
-		if (view) view.dispatch({ effects: setSearchQuery.of(query) });
+		if (view) untrack(() => view.dispatch({ effects: setSearchQuery.of(query) }));
 	});
 
 	$effect(() => {
@@ -70,24 +84,32 @@
 		getActiveView()?.focus();
 	}
 
+	// Guarded on query validity for the same reason find.next/find.prev are
+	// (see commands/core/find.ts): findNext/findPrevious/replaceNext/replaceAll
+	// fall back to CodeMirror's own native search panel — a second find UI we
+	// never want — whenever the query is invalid, which an empty box always is.
+	// Reads the view's own search state (same source find.ts's guards use)
+	// rather than this component's local currentQuery(), which is only
+	// guaranteed in sync with the view once the untrack()-wrapped effect
+	// above has flushed.
 	function doFindNext(): void {
 		const view = getActiveView();
-		if (view) findNext(view);
+		if (view && getSearchQuery(view.state).valid) findNext(view);
 	}
 
 	function doFindPrev(): void {
 		const view = getActiveView();
-		if (view) findPrevious(view);
+		if (view && getSearchQuery(view.state).valid) findPrevious(view);
 	}
 
 	function doReplaceNext(): void {
 		const view = getActiveView();
-		if (view) replaceNext(view);
+		if (view && getSearchQuery(view.state).valid) replaceNext(view);
 	}
 
 	function doReplaceAll(): void {
 		const view = getActiveView();
-		if (view) replaceAll(view);
+		if (view && getSearchQuery(view.state).valid) replaceAll(view);
 	}
 
 	function onKeydown(event: KeyboardEvent): void {

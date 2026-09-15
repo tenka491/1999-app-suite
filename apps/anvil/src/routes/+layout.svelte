@@ -6,6 +6,8 @@
 	import { initKeymap, teardownKeymap, handleGlobalKeydown } from '$lib/keymap/keymap-store.svelte';
 	import { hasAnyDirtyDocuments, saveAllDirtyDocuments } from '$lib/workspace/workspace-state.svelte';
 	import { initFolderWatch, teardownFolderWatch } from '$lib/workspace/folder-tree.svelte';
+	import { initSettings, teardownSettings, getSettings } from '$lib/settings/settings-store.svelte';
+	import { resolveDataTheme } from '$lib/settings/themes';
 	import { askUnsavedChanges } from '$lib/ui/confirm.svelte';
 	import Toast from '$lib/ui/Toast.svelte';
 	import Palette from '$lib/ui/Palette.svelte';
@@ -13,6 +15,7 @@
 	import GotoAnything from '$lib/ui/GotoAnything.svelte';
 	import GotoLine from '$lib/ui/GotoLine.svelte';
 	import FindBar from '$lib/ui/FindBar.svelte';
+	import ThemeSwitch from '$lib/ui/ThemeSwitch.svelte';
 
 	let { children } = $props();
 
@@ -30,6 +33,15 @@
 	$effect(() => {
 		initFolderWatch();
 		return () => teardownFolderWatch();
+	});
+
+	$effect(() => {
+		initSettings();
+		return () => teardownSettings();
+	});
+
+	$effect(() => {
+		document.documentElement.dataset.theme = resolveDataTheme(getSettings().theme);
 	});
 
 	$effect(() => {
@@ -59,5 +71,6 @@
 <GotoAnything />
 <GotoLine />
 <FindBar />
+<ThemeSwitch />
 <Toast />
 <ConfirmModal />

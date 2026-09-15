@@ -1,0 +1,25 @@
+// 1999 Dark (default) — PRD §F10. Applied on bare :root so the app has
+// colors before settings load and `data-theme` gets set, and again under
+// [data-theme='dark'] so switching back from Light re-applies it.
+:root,
+[data-theme='dark'] {
+	--color-bg: #161c26; // §F10 --bg
+	--color-bg-elevated: #363540; // §F10 --surface: sidebar, tabs, palette, selection base
+	--color-accent: #f2c849; // §F10 --accent: cursor, active tab marker, keywords
+	--color-warm: #bf8f73; // §F10 --warm: strings
+	--color-danger: #d9483b; // §F10 --danger: errors, numbers/constants
+	--color-fg: #e7e4de; // §F10 --fg (new neutral, chosen by eye): body text
+	--color-fg-muted: #8f8da3; // §F10 --muted (new neutral, chosen by eye): comments, line numbers, dimmed paths
+	--color-border: #2a2935;
+	--color-selection: #4a4858;
+	--color-type: #7dabf5;
+
+	// Syntax highlighting (F4), mapped per §F10's role table: accent →
+	// keywords, warm → strings, danger → numbers/constants, muted → comments.
+	--syntax-keyword: var(--color-accent);
+	--syntax-string: var(--color-warm);
+	--syntax-number: var(--color-danger);
+	--syntax-comment: var(--color-fg-muted);
+	--syntax-type: var(--color-type);
+	--syntax-function: var(--color-type);
+}

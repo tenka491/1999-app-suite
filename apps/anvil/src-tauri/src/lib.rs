@@ -16,6 +16,9 @@ pub fn run() {
       fs::read_file,
       fs::write_file,
       config::read_user_keymap,
+      config::read_user_settings,
+      config::write_user_settings,
+      config::get_settings_path,
       workspace::list_directory,
       workspace::watch_directory_cmd,
       workspace::unwatch_directory_cmd,
@@ -38,6 +41,15 @@ pub fn run() {
         Err(err) => {
           log::error!("Failed to watch user keymap: {err}");
           let _ = app.handle().emit("keymap://watch-failed", err);
+        }
+      }
+      match config::watch_user_settings(&app.handle().clone()) {
+        Ok(watcher) => {
+          app.manage(watcher);
+        }
+        Err(err) => {
+          log::error!("Failed to watch user settings: {err}");
+          let _ = app.handle().emit("settings://watch-failed", err);
         }
       }
       Ok(())

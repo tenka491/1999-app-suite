@@ -1,0 +1,24 @@
+// 1999 Light — ships to prove theme switching works (§F10), using the same
+// roles as 1999 Dark. The PRD only tables exact hex values for Dark; these
+// are chosen by eye to keep the same accent/warm/danger hues legible against
+// a light background (the dark-mode values are too washed-out at this
+// lightness to pass basic contrast).
+[data-theme='light'] {
+	--color-bg: #f4f1ea;
+	--color-bg-elevated: #e8e2d5; // §F10 --surface role, lightened
+	--color-accent: #7d5e0f;
+	--color-warm: #7a5236;
+	--color-danger: #a6362b;
+	--color-fg: #2b2a25;
+	--color-fg-muted: #6e6b5e;
+	--color-border: #d8d2c0;
+	--color-selection: #ddd4e8;
+	--color-type: #2f5fa8;
+
+	--syntax-keyword: var(--color-accent);
+	--syntax-string: var(--color-warm);
+	--syntax-number: var(--color-danger);
+	--syntax-comment: var(--color-fg-muted);
+	--syntax-type: var(--color-type);
+	--syntax-function: var(--color-type);
+}

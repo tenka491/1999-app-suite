@@ -1,0 +1,13 @@
+// Anvil's default settings. This file is bundled with the app and
+// overwritten on update — copy entries you want to change into your own
+// settings file instead (Preferences: Open Settings) rather than editing
+// this one.
+{
+	"theme": "1999-dark",
+	"font_size": 14,
+	"tab_size": 2,
+	"translate_tabs_to_spaces": true,
+	"word_wrap": false,
+	"trim_trailing_whitespace_on_save": false,
+	"ensure_newline_at_eof_on_save": true
+}

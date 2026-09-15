@@ -436,3 +436,43 @@ this conversation if setting up a new dev machine.
 - **The find bar didn't clear its text between opens** — closing and reopening it
   kept whatever was previously typed, unlike every other overlay in the app (palette,
   Goto Anything, Goto Line all reset on open). Missing reset effect, now added.
+
+## Post-M4 — code review fixes, keymap repeat guard, app icons
+
+Landed after M4 check-in 2 was marked done; recorded here rather than reopening
+either check-in's own log entry.
+
+**Code review fixes (`b4f3e14`):**
+- `search.rs` (M3): Goto Anything fuzzy-matched the full absolute file path instead
+  of the workspace-relative path, so common substrings from the checkout's parent
+  directories polluted every query's ranking. Now matches against a relative path
+  precomputed once at index time (a small borrowed-candidate wrapper avoids cloning
+  the path-string haystack on every keystroke, fixing an efficiency finding at the
+  same time).
+- `workspace-state.svelte.ts` (M4): Save-As only reconfigured the CodeMirror
+  language compartment when the document being saved was the *active* tab, so
+  saving a background dirty document (e.g. "save all" on quit) left it in
+  plain-text highlighting until reopened. Now builds the reconfiguration off the
+  document's own `editorState` directly, and additionally dispatches it to the live
+  view when that view does happen to be active.
+- `FindBar.svelte` (M4): the match count didn't react to document edits, only to
+  the find bar's own inputs — typing with Find open left a stale count on screen.
+  Fixed by reading `getCursorInfo()` (already reactive on every doc change, via the
+  editor's update listener) inside the `matchInfo` derivation, purely to register
+  the dependency.
+- `GotoAnything.svelte` (M3): the search request had no error handling, so a
+  Rust-side failure surfaced as a silent unhandled promise rejection instead of
+  visible feedback. Added a `.catch` that clears results and shows a toast.
+
+**Keymap resolver (`ef66468`):** OS key-repeat fed straight into the chord
+tracker — holding the first key of a chord (e.g. `mod+k` before `mod+o`) a beat
+too long turned the pending `[k]` into `[k, k]`, which matches nothing and
+silently resets the chord with no feedback as to why. `handleGlobalKeydown` now
+ignores `event.repeat` before it ever reaches the resolver, which stays DOM-free
+per its own design (§4.3/6).
+
+**App icons (`ef66468`):** regenerated `src-tauri/icons/*` from the new
+`anvil-icons.png` via `tauri icon`, kept the generated iOS/Android sets even
+though this app is desktop-only for now, and replaced the leftover
+SvelteKit-scaffold favicon (an unwired default Svelte-logo SVG) with a PNG
+favicon generated from the same source, wired into `+layout.svelte`.

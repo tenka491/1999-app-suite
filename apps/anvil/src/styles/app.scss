@@ -1,5 +1,7 @@
 @use './reset';
 @use './tokens';
+@use './themes/dark';
+@use './themes/light';
 
 // Bundled locally — never loaded from a CDN. See static/fonts/RedHatMono-OFL.txt.
 @font-face {
