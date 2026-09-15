@@ -476,3 +476,187 @@ per its own design (§4.3/6).
 though this app is desktop-only for now, and replaced the leftover
 SvelteKit-scaffold favicon (an unwired default Svelte-logo SVG) with a PNG
 favicon generated from the same source, wired into `+layout.svelte`.
+
+## M5, check-in 1 — Settings and theme system (done)
+
+**What was built**
+
+- Settings system mirroring the keymap's exact pattern (PRD §4.4): `config.rs`
+  gained `settings.jsonc` support (bundled defaults, `<app_config_dir>/settings.jsonc`,
+  directory watch, hot reload), and `src/lib/settings/` holds the camelCase/snake_case
+  type split, `default-settings.jsonc`, a JSONC-tolerant parser (tested) that validates
+  only the fields actually present — a settings file is meant to be sparse, unlike the
+  keymap's full-array validation — and the reactive store with hot reload + error toast.
+  `updateSetting()` edits the user file via `jsonc-parser`'s `modify`/`applyEdits`
+  rather than a full re-serialize, so hand-added comments survive a write.
+- `preferences.open_settings` command, opening the file via the existing
+  `workspace.open_path` flow.
+- Theme system (§F10): `styles/themes/_dark.scss` reconciled to the PRD's exact hex
+  table; `_light.scss` is new (no PRD hex values given for it — chosen by eye,
+  WCAG-contrast-checked, ≥4.5:1 except the PRD's own literal danger value used only
+  for small syntax accents). `data-theme` attribute bridge in `+layout.svelte`.
+  `theme.switch` command + `ThemeSwitch.svelte` (a fourth `CommandBar` consumer,
+  same shape as `Palette`/`GotoAnything`).
+
+**Key modules**
+
+| Path | Purpose |
+|---|---|
+| `apps/anvil/src-tauri/src/config.rs` | `settings.jsonc` read/write/watch, mirrors `keymap.jsonc` |
+| `apps/anvil/src/lib/settings/` | types, default settings, parser, reactive store |
+| `apps/anvil/src/lib/settings/themes.ts` | Theme registry, id → `data-theme` mapping |
+| `apps/anvil/src/styles/themes/` | 1999 Dark / 1999 Light CSS variable blocks |
+| `apps/anvil/src/lib/ui/ThemeSwitch.svelte` | `theme.switch` quick-pick |
+
+**Deviations, and why**
+
+- **`write_user_settings` has no validation of its own** — it persists whatever
+  string it's given. The frontend validates the edited JSONC via `parseSettingsSource`
+  before writing and refuses (with a toast) rather than risk further-corrupting an
+  already hand-broken settings file with no repair path.
+- **`preferences.open_keymap` / `preferences.open_default_keymap`** (also listed in
+  §6 as palette-only commands) weren't built — scoped out to keep this check-in
+  focused on settings/theme; not picked up in check-in 2 either. Still open.
+
+**Bugs hit and fixed**
+
+- **Missing `core:window:allow-destroy` capability.** The unsaved-changes-on-quit
+  flow's `win.destroy()` always threw (a silent unhandled rejection), leaving the
+  window stuck open whenever a dirty tab existed. A pre-existing gap from M2's
+  close-prompt work that had just never been exercised until now. Fixed by adding
+  the permission to `capabilities/default.json`.
+- **Find bar infinite reactivity loop.** `FindBar.svelte`'s search-sync `$effect`
+  dispatches straight to the view; that dispatch synchronously runs
+  `workspace-state.svelte.ts`'s update listener, which does a read-then-write on the
+  shared `documents` map — all within the same tracked scope, so Svelte attributed
+  both to the dispatching effect and reran it forever on every keystroke, regardless
+  of document content (reproduced even on an empty untitled file). An earlier guard
+  against CodeMirror's native search-panel fallback (a real, separate bug — invalid
+  queries silently opened a second, unclosable find UI) was a legitimate fix but
+  didn't touch this one; root-caused via targeted console logging once static
+  analysis stalled. Fixed with `untrack()` around the dispatch. **General lesson for
+  this codebase: any `view.dispatch(...)` called from inside a `$effect` needs
+  `untrack()` if the update listener it triggers touches shared reactive state
+  (`documents`, `panes`, etc.) — otherwise the effect can end up "reading and writing
+  the same state" through that indirection alone.**
+
+## M5, check-in 2 — Font size, tab/whitespace settings (done, one known issue)
+
+**What was built**
+
+- Font size (F3, session-only): `--font-size-editor` CSS custom property, seeded
+  from `settings.font_size` once at startup and never written back. `view.font_size_increase`
+  / `_decrease` / `_reset` commands (`mod+=` / `mod+-` / `mod+0`).
+- Tab size / soft tabs / word wrap: `editor-settings.ts`'s single compartment
+  (`EditorState.tabSize`, `indentUnit`, conditional `EditorView.lineWrapping`), tested.
+  Propagates to *every* open document, not just the active tab, via
+  `applyEditorSettingsToAllDocuments` — same reasoning as the M4 Save-As
+  language-compartment fix. `view.toggle_word_wrap` writes back through the same
+  `updateSetting()` `theme.switch` uses.
+- Save-time whitespace (§4.4): `trimTrailingWhitespaceOnSave` / `ensureNewlineAtEofOnSave`
+  wired into `saveDocument`, applied to the buffer itself and not just the written
+  bytes — otherwise the dirty indicator would relight immediately after a save that
+  changed content, since `contentMatches` compares the live doc against `savedContent`.
+
+**Bugs hit and fixed**
+
+- `applyEditorSettingsToAllDocuments` iterates and writes the shared `documents`
+  map, same as the Find bar bug's shape — its entire body is wrapped in `untrack()`
+  so calling it from the settings-watching `$effect` in `+layout.svelte` can't loop
+  the same way.
+
+**Known issue (unresolved)**
+
+- **Line numbers don't stay vertically aligned with their line as font size changes**
+  (increase, decrease, or reset). Tried: `view.requestMeasure()` after the CSS var
+  change (CodeMirror doesn't know to remeasure on an external CSS change it didn't
+  dispatch), and an explicit unitless `lineHeight` on the theme root so
+  `.cm-content`/`.cm-gutters` can't resolve to different browser-default line-heights.
+  Neither fully fixed it per live testing. Root cause not yet found — this
+  environment has no GUI access to iterate visually. Revisit once that exists.
+
+## M5, check-in 3 — Empty state, large-file/binary handling, F2 reload (done)
+
+**What was built**
+
+- **Empty state (F1):** the sidebar's existing "no folder open" state was missing
+  the Goto Anything mention the PRD asks for; added it (still one line, not a
+  tutorial). No separate empty state was added for "folder open, zero tabs" — F1's
+  own text scopes this to the no-folder-open case specifically.
+- **Large-file warning (F3):** `get_file_size` (Rust) checked before reading, so a
+  huge file doesn't get read into memory just to find out it's huge. Above 10 MB,
+  a confirm prompt ("Open Anyway?") gates the read — via a generalized
+  `ConfirmModal`/`confirm.svelte.ts` that now supports a plain 2-button confirm
+  alongside the existing 3-button unsaved-changes flow, rather than a second modal
+  component. Both `file.open` and `workspace.open_path` (sidebar, Goto Anything,
+  `preferences.open_settings`) funnel through one shared `readFileWithChecks()`.
+- **Binary/non-UTF-8 handling (F3):** `read_file` switched from `fs::read_to_string`
+  to explicit `fs::read` + `String::from_utf8`, so an invalid file gets a clean
+  "isn't valid UTF-8 text" message instead of Rust's raw I/O error text. Already
+  reaches the user via the existing command-registry error-to-toast handling — no
+  new UI needed. Doubles as binary-file detection without separate sniffing logic,
+  matching the PRD's own framing of the two as closely related.
+- **F2 external-change reload:** a new per-open-document file watcher
+  (`WatchedFiles` in `workspace.rs`, mirroring `config.rs`'s keymap/settings watcher
+  pattern) — separate from the sidebar's `WatchedDirs`, which only covers expanded
+  directories and wouldn't catch a file opened outside the workspace root or in a
+  collapsed one. Started on open and on Save-As (path changes unwatch the old path,
+  watch the new one), stopped on close. On an external change: a clean tab reloads
+  silently (buffer replaced only if content actually differs, so the app's own save
+  landing doesn't churn undo history); a dirty tab gets a non-blocking toast and is
+  left alone.
+
+**Key modules**
+
+| Path | Purpose |
+|---|---|
+| `apps/anvil/src-tauri/src/workspace.rs` | `WatchedFiles`, `watch_file_cmd`/`unwatch_file_cmd` |
+| `apps/anvil/src-tauri/src/fs.rs` | `get_file_size`, UTF-8-explicit `read_file` |
+| `apps/anvil/src/lib/workspace/file-io.ts` | `readFileWithChecks`, `watchFile`/`unwatchFile` |
+| `apps/anvil/src/lib/ui/confirm.svelte.ts` | Generalized confirm request (`askConfirm` alongside `askUnsavedChanges`) |
+
+**Bugs hit and fixed**
+
+- The initial fire-and-forget `watchFile`/`unwatchFile` calls in `openDocument`/
+  `closeTabSilently` broke `workspace-state.test.ts` (pre-existing since M2, missed
+  earlier in this milestone) — real Tauri IPC isn't available under Vitest, and an
+  unmocked `invoke()` throws synchronously in that environment. Fixed two ways:
+  wrapped both calls in quiet error-swallowing helpers (`watchFileQuietly`/
+  `unwatchFileQuietly` — a failed watch is best-effort background infra, not worth
+  a toast or blocking a caller on) and updated the test file's mocks to cover the
+  two new `file-io` exports by default, not just the tests that already mocked
+  `readFile`/`writeFile`/`saveAsDialog`.
+
+## Post-M5 — dev-server CSS bug (fixed), one known cosmetic issue left
+
+Found live-testing check-in 3, not caused by any app code — `node_modules/vite`
+(v8.3.0) predates this session (installed at M0 scaffolding time), so this was
+always latent, just never exercised until a `tauri dev` cold start finally hit it.
+
+**Bug (fixed):** `vite@8` / `@sveltejs/vite-plugin-svelte@7.3.0` (latest available —
+no newer patch exists) has a dev-server-only bug where the plugin's virtual-CSS-module
+cache (`meta.svelte.css` in Vite's module graph) intermittently comes back empty for
+components that compiled and cached fine moments earlier. Vite's loader falls back to
+serving the component's *raw source* as the "css", which the browser silently discards
+as invalid — components render with no styles at all. Confirmed via direct requests to
+the dev server: two unrelated, untouched components both hit it, in a fixed order that
+should have ruled out a race, on a single clean process with no other dev server
+running (an earlier, wrong theory — logged and corrected here for the record). Not
+present in `yarn build`, which bundles CSS through a different path.
+
+**Fix:** `emitCss: false` added to `vite.config.ts`'s `sveltekit({...})` call (forwarded
+to vite-plugin-svelte — SvelteKit passes through any option it doesn't recognize
+itself). Styles now compile directly into each component's JS and get injected via
+`$.append_styles(...)`/`style.textContent` at runtime, bypassing the broken virtual-module
+path entirely rather than working around its symptoms. Verified directly: the compiled
+Sidebar module now embeds real, correctly-scoped CSS inline and no longer references the
+virtual CSS URL at all.
+
+**Known issue (cosmetic, unresolved):** the dev console still logs `[vite-plugin-svelte:load]
+failed to load virtual css module ...` for most components on every `tauri dev` start.
+Root cause: SvelteKit always does one SSR pass even for a fully client-rendered app, and
+that SSR pass independently looks up the same compiled-CSS metadata — for what's likely a
+separate critical-CSS/accounting purpose unrelated to `emitCss`. Since nothing downstream
+consumes that particular lookup's result anymore, the failure has no visible effect, just
+log noise. Left as-is rather than spending more time silencing an SSR-only warning this
+close to done — revisit if it ever turns out to matter.

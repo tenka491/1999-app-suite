@@ -1,4 +1,4 @@
-import { openFileDialog, readFile } from '../../workspace/file-io';
+import { openFileDialog, readFileWithChecks } from '../../workspace/file-io';
 import { openDocument, saveDocument, createUntitledDocument } from '../../workspace/workspace-state.svelte';
 import type { Command } from '../types';
 
@@ -8,9 +8,10 @@ export const fileOpen: Command = {
 	async run() {
 		const picked = await openFileDialog();
 		if (!picked) return;
-		const { contents, lineEnding } = await readFile(picked.path);
+		const read = await readFileWithChecks(picked.path);
+		if (!read) return; // user backed out of the large-file warning
 		// A deliberate, explicit Open is a permanent tab, not a preview (F2.1).
-		openDocument(picked.path, contents, lineEnding, { preview: false });
+		openDocument(picked.path, read.contents, read.lineEnding, { preview: false });
 	}
 };
 

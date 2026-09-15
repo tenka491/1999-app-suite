@@ -5,6 +5,8 @@ import { standardKeymap, history } from '@codemirror/commands';
 import { search } from '@codemirror/search';
 import { syntaxHighlightExtension } from './syntax-highlight';
 import { detectPlatform } from '../keymap/platform';
+import { editorSettingsCompartment, computeEditorSettingsExtensions } from './editor-settings';
+import { getSettings } from '../settings/settings-store.svelte';
 
 const platform = detectPlatform();
 
@@ -16,7 +18,18 @@ const theme = EditorView.theme(
 			color: 'var(--color-fg)',
 			backgroundColor: 'var(--color-bg)',
 			fontFamily: 'var(--font-mono)',
-			fontSize: '14px'
+			// Session-only (F3), never written to settings.jsonc — see
+			// font-size-state.svelte.ts, which sets this custom property.
+			fontSize: 'var(--font-size-editor)',
+			// Explicit and unitless (a multiplier of each element's own
+			// font-size) rather than left to the browser's "normal" default —
+			// .cm-content and .cm-gutters are different elements, and their
+			// browser-default line-heights don't reliably resolve to the same
+			// pixel value even with identical font-size, which is what made
+			// line numbers drift out of alignment with their line as the font
+			// size changed. Inheriting one explicit ratio keeps them locked
+			// together at every size.
+			lineHeight: '1.4'
 		},
 		'.cm-content': {
 			caretColor: 'var(--color-fg)'
@@ -46,6 +59,11 @@ export function baseExtensions(): Extension[] {
 		keymap.of(standardKeymap),
 		theme,
 		syntaxHighlightExtension,
+		// Tab size, soft tabs, word wrap — read from current settings at
+		// creation time; kept live afterward by reconfiguring this compartment
+		// across every open document (see workspace-state.svelte.ts's
+		// applyEditorSettingsToAllDocuments).
+		editorSettingsCompartment.of(computeEditorSettingsExtensions(getSettings())),
 		// Draws selections/cursors via DOM instead of the native browser
 		// Selection API, which only reliably supports one range — required
 		// for multiple cursors (F5) to render correctly, especially on

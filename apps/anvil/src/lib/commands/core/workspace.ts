@@ -1,4 +1,4 @@
-import { readFile } from '../../workspace/file-io';
+import { readFileWithChecks } from '../../workspace/file-io';
 import { openDocument } from '../../workspace/workspace-state.svelte';
 import { openFolder } from '../../workspace/folder-tree.svelte';
 import { toggleSidebar } from '../../ui/sidebar-state.svelte';
@@ -23,8 +23,9 @@ export const workspaceOpenPath: Command = {
 	async run(_ctx, args) {
 		const path = args?.path as string;
 		const preview = Boolean(args?.preview);
-		const { contents, lineEnding } = await readFile(path);
-		openDocument(path, contents, lineEnding, { preview });
+		const read = await readFileWithChecks(path);
+		if (!read) return; // user backed out of the large-file warning
+		openDocument(path, read.contents, read.lineEnding, { preview });
 	}
 };
 

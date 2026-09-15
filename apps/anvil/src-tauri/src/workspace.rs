@@ -106,3 +106,51 @@ pub fn unwatch_all_directories(state: tauri::State<WatchedDirs>) -> Result<(), S
 	watchers.clear();
 	Ok(())
 }
+
+/// One watcher per open document that has a real path on disk (F2's
+/// external-change reload) — separate from WatchedDirs above, which only
+/// covers *expanded sidebar directories* and wouldn't catch a file opened
+/// via file.open outside the workspace root, or sitting in a collapsed
+/// directory.
+pub struct WatchedFiles(Mutex<HashMap<String, notify::RecommendedWatcher>>);
+
+impl WatchedFiles {
+	pub fn new() -> Self {
+		Self(Mutex::new(HashMap::new()))
+	}
+}
+
+fn lock_file_watchers(state: &WatchedFiles) -> Result<std::sync::MutexGuard<'_, HashMap<String, notify::RecommendedWatcher>>, String> {
+	state.0.lock().map_err(|_| "file watcher registry lock was poisoned".to_string())
+}
+
+#[tauri::command]
+pub fn watch_file_cmd(app: AppHandle, state: tauri::State<WatchedFiles>, path: String) -> Result<(), String> {
+	let mut watchers = lock_file_watchers(&state)?;
+	if watchers.contains_key(&path) {
+		return Ok(());
+	}
+
+	let file_path = Path::new(&path);
+	let dir = file_path.parent().ok_or_else(|| "file path has no parent directory".to_string())?.to_path_buf();
+	let file_name = file_path.file_name().map(|name| name.to_owned());
+	let emit_path = path.clone();
+
+	let watcher = watch_directory(
+		&dir,
+		move |event| event.paths.iter().any(|p| p.file_name() == file_name.as_deref()),
+		move || {
+			let _ = app.emit("workspace://file-changed", emit_path.clone());
+		}
+	)?;
+
+	watchers.insert(path, watcher);
+	Ok(())
+}
+
+#[tauri::command]
+pub fn unwatch_file_cmd(state: tauri::State<WatchedFiles>, path: String) -> Result<(), String> {
+	let mut watchers = lock_file_watchers(&state)?;
+	watchers.remove(&path);
+	Ok(())
+}

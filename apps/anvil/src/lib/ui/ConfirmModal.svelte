@@ -9,9 +9,14 @@
 		<div class="modal">
 			<p>{request.message}</p>
 			<div class="actions">
-				<button onclick={() => request.resolve('cancel')}>Cancel</button>
-				<button onclick={() => request.resolve('discard')}>Don't Save</button>
-				<button class="primary" onclick={() => request.resolve('save')}>Save</button>
+				{#if request.kind === 'unsaved-changes'}
+					<button onclick={() => request.resolve('cancel')}>Cancel</button>
+					<button onclick={() => request.resolve('discard')}>Don't Save</button>
+					<button class="primary" onclick={() => request.resolve('save')}>Save</button>
+				{:else}
+					<button onclick={() => request.resolve(false)}>Cancel</button>
+					<button class="primary" onclick={() => request.resolve(true)}>{request.confirmLabel}</button>
+				{/if}
 			</div>
 		</div>
 	</div>

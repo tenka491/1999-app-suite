@@ -8,6 +8,7 @@
 	const rootName = $derived(rootPath?.split('/').filter(Boolean).pop() ?? '');
 	const children = $derived(rootPath ? getChildren(rootPath) : undefined);
 	const openFolderKeys = $derived(getKeybindingLabel('workspace.open_folder'));
+	const gotoAnythingKeys = $derived(getKeybindingLabel('goto.anything'));
 </script>
 
 <div class="sidebar">
@@ -24,6 +25,9 @@
 			<button onclick={() => run('workspace.open_folder')}>
 				Open Folder{openFolderKeys ? ` (${openFolderKeys})` : ''}
 			</button>
+			{#if gotoAnythingKeys}
+				<p class="hint">Or press {gotoAnythingKeys} to jump to a file.</p>
+			{/if}
 		</div>
 	{/if}
 </div>

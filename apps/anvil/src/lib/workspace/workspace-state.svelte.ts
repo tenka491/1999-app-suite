@@ -1,13 +1,19 @@
+import { untrack } from 'svelte';
+import { listen } from '@tauri-apps/api/event';
 import { SvelteMap } from 'svelte/reactivity';
 import { EditorState } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
 import { baseExtensions } from '../editor/create-editor';
+import { editorSettingsCompartment, computeEditorSettingsExtensions } from '../editor/editor-settings';
 import { getActiveView } from './active-view.svelte';
 import { detectLanguage } from './language';
 import { getLanguageSupport, languageCompartment } from '../editor/language-support';
-import { readFile, writeFile, saveAsDialog } from './file-io';
+import { readFile, writeFile, saveAsDialog, watchFile, unwatchFile } from './file-io';
 import { askUnsavedChanges } from '../ui/confirm.svelte';
+import { showToast } from '../ui/toast.svelte';
 import { setCursorInfo, resetCursorInfo } from '../editor/cursor-state.svelte';
+import { getSettings } from '../settings/settings-store.svelte';
+import type { Settings } from '../settings/types';
 import type { Document, LineEnding, Pane, Tab } from './types';
 
 function generateId(): string {
@@ -32,12 +38,37 @@ let activePaneId = $state<string>(panes[0].id);
  *  it is more machinery than v1 needs (a deliberate simplification). */
 const closedTabHistory: string[] = [];
 
+// watchFile/unwatchFile are best-effort background infra for §F2 — a
+// failure here just means external-change reload silently won't work for
+// that one file. Not worth a toast (imagine opening 20 files under a
+// permissions-restricted directory) or worth blocking any caller on.
+function watchFileQuietly(path: string): void {
+	watchFile(path).catch(() => {});
+}
+
+function unwatchFileQuietly(path: string): void {
+	unwatchFile(path).catch(() => {});
+}
+
 // Length check first: comparing the full text on every keystroke would be
 // wasteful for a large file, but two lengths differing (the common case
 // while actively editing) rules it out without ever touching the content.
 function contentMatches(newState: EditorState, savedContent: string): boolean {
 	if (newState.doc.length !== savedContent.length) return false;
 	return newState.doc.toString() === savedContent;
+}
+
+function trimTrailingWhitespace(contents: string): string {
+	return contents
+		.split('\n')
+		.map((line) => line.replace(/[ \t]+$/, ''))
+		.join('\n');
+}
+
+// Deliberately a no-op on a genuinely empty file — there's no unterminated
+// last line to close, so adding one would just be inventing content.
+function ensureTrailingNewline(contents: string): string {
+	return contents.length === 0 || contents.endsWith('\n') ? contents : contents + '\n';
 }
 
 function markDirty(docId: string, newState: EditorState): void {
@@ -55,6 +86,40 @@ function markDirty(docId: string, newState: EditorState): void {
 function syncEditorState(docId: string, newState: EditorState): void {
 	const doc = documents.get(docId);
 	if (doc) documents.set(docId, { ...doc, editorState: newState });
+}
+
+/** Reconfigures tab size / soft tabs / word wrap on every open document, not
+ *  just the active one — same reasoning as saveDocument's Save-As
+ *  language-compartment fix: a document that isn't the focused tab still
+ *  needs its stored EditorState updated so it reflects current settings the
+ *  next time it's focused, not just whatever was current when it was
+ *  created. The active document's live view is also dispatched to directly,
+ *  wrapped in untrack(): the update listener's read-then-write of
+ *  `documents` happens synchronously inside that dispatch, and without
+ *  untrack() a caller that's itself a settings-watching $effect would loop
+ *  the same way the Find bar's search-sync effect did (see its own comment). */
+export function applyEditorSettingsToAllDocuments(settings: Settings): void {
+	const content = computeEditorSettingsExtensions(settings);
+	// The whole body, not just the dispatch: iterating `documents` below (to
+	// find every open document) is itself a tracked read on the SvelteMap,
+	// and this function's own writes to it would then look, to whatever
+	// effect called this, like "this effect reads and writes the same
+	// state" — the exact loop shape the Find bar bug was. untrack() keeps
+	// this entire read-then-write pass from ever being attributed to a
+	// caller's reactive scope.
+	untrack(() => {
+		const view = getActiveView();
+		const activeDocId = getActiveDocument()?.id;
+
+		for (const [docId, doc] of documents) {
+			const reconfigure = doc.editorState.update({ effects: editorSettingsCompartment.reconfigure(content) });
+			documents.set(docId, { ...doc, editorState: reconfigure.state });
+
+			if (view && docId === activeDocId && view.state === doc.editorState) {
+				view.dispatch(reconfigure);
+			}
+		}
+	});
 }
 
 function createDocumentState(docId: string, contents: string, path: string | null): EditorState {
@@ -142,6 +207,9 @@ export function openDocument(
 		savedContent: contents
 	};
 	documents.set(docId, document);
+	// Fire-and-forget: the watch only needs to be *up* before the next
+	// external change, not before this function returns (§F2).
+	if (path) watchFileQuietly(path);
 
 	if (options.preview) {
 		const existingPreview = pane.tabs.find((t) => t.isPreview);
@@ -159,10 +227,34 @@ export function createUntitledDocument(): void {
 }
 
 export async function saveDocument(doc: Document, options: { forcePrompt?: boolean } = {}): Promise<boolean> {
-	const contents = doc.editorState.doc.toString();
 	let path = doc.path;
 	let language = doc.language;
+	// Built off doc.editorState directly (not the active view) throughout,
+	// and each step below re-checks view.state against the *current* value
+	// of this variable — not doc.editorState — so this still applies
+	// correctly when saving a document that isn't the focused tab (e.g.
+	// saveAllDirtyDocuments() iterating tabs without switching them), and so
+	// a later step's dispatch doesn't get compared against an already-stale
+	// pre-transformation state.
 	let editorState = doc.editorState;
+
+	const settings = getSettings();
+	const original = editorState.doc.toString();
+	let contents = original;
+	if (settings.trimTrailingWhitespaceOnSave) contents = trimTrailingWhitespace(contents);
+	if (settings.ensureNewlineAtEofOnSave) contents = ensureTrailingNewline(contents);
+
+	// Applied to the buffer itself, not just the bytes about to be written —
+	// otherwise the editor's content and the file on disk diverge the moment
+	// save finishes, and the dirty indicator would immediately relight
+	// (contentMatches compares the live doc against savedContent, which has
+	// to equal what's actually in editorState).
+	if (contents !== original) {
+		const replace = editorState.update({ changes: { from: 0, to: editorState.doc.length, insert: contents } });
+		const view = getActiveView();
+		if (view && view.state === editorState) view.dispatch(replace);
+		editorState = replace.state;
+	}
 
 	if (!path || options.forcePrompt) {
 		const chosen = await saveAsDialog();
@@ -174,19 +266,18 @@ export async function saveDocument(doc: Document, options: { forcePrompt?: boole
 		// An untitled buffer (or one saved under a different extension) gets
 		// re-languaged in place — reconfiguring the compartment rather than
 		// rebuilding the whole state, since it's still the same document.
-		// Built off doc.editorState directly (not the active view) so this
-		// still applies when saving a document that isn't the focused tab —
-		// e.g. saveAllDirtyDocuments() iterating tabs without switching them.
 		if (pathChanged) {
-			const reconfigure = doc.editorState.update({
+			const reconfigure = editorState.update({
 				effects: languageCompartment.reconfigure(getLanguageSupport(path))
 			});
+			const view = getActiveView();
+			if (view && view.state === editorState) view.dispatch(reconfigure);
 			editorState = reconfigure.state;
 
-			const view = getActiveView();
-			if (view && view.state === doc.editorState) {
-				view.dispatch(reconfigure);
-			}
+			// §F2's external-change watch follows the path, not the document —
+			// an untitled buffer has nothing to watch until it has one.
+			if (doc.path) unwatchFileQuietly(doc.path);
+			watchFileQuietly(path);
 		}
 	}
 
@@ -201,7 +292,11 @@ export async function saveDocument(doc: Document, options: { forcePrompt?: boole
  *  replaced by a new one, which is not a user-visible "close". */
 function closeTabSilently(pane: Pane, tab: Tab): void {
 	pane.tabs = pane.tabs.filter((t) => t.id !== tab.id);
-	if (!pane.tabs.some((t) => t.docId === tab.docId)) documents.delete(tab.docId);
+	if (!pane.tabs.some((t) => t.docId === tab.docId)) {
+		const path = documents.get(tab.docId)?.path;
+		if (path) unwatchFileQuietly(path);
+		documents.delete(tab.docId);
+	}
 	if (pane.activeTabId === tab.id) pane.activeTabId = pane.tabs.at(-1)?.id ?? null;
 }
 
@@ -294,4 +389,60 @@ export async function saveAllDirtyDocuments(): Promise<boolean> {
 		if (doc.isDirty && !(await saveDocument(doc))) return false;
 	}
 	return true;
+}
+
+/** §F2: a file changing on disk reloads its open document silently if the
+ *  tab is clean, or shows a non-blocking notice (leaving the buffer alone)
+ *  if it's dirty. A plain async event-listener callback, not a Svelte
+ *  effect, so — unlike applyEditorSettingsToAllDocuments — dispatching to
+ *  the live view here doesn't need untrack(): nothing is tracking this
+ *  callback's reads. */
+async function handleExternalFileChange(path: string): Promise<void> {
+	for (const [docId, doc] of documents) {
+		if (doc.path !== path) continue;
+
+		if (doc.isDirty) {
+			showToast(`${path.split('/').pop()} changed on disk — showing your unsaved version.`, 'info');
+			continue;
+		}
+
+		let read: { contents: string; lineEnding: LineEnding };
+		try {
+			read = await readFile(path);
+		} catch (err) {
+			showToast(`Couldn't reload ${path.split('/').pop()}: ${err}`, 'error');
+			continue;
+		}
+
+		// Skip a no-op reload (e.g. this "change" was actually our own save
+		// landing) — replacing identical content would still create a new
+		// transaction and needlessly disturb undo history/decorations.
+		if (read.contents === doc.editorState.doc.toString()) continue;
+
+		const replace = doc.editorState.update({
+			changes: { from: 0, to: doc.editorState.doc.length, insert: read.contents }
+		});
+		const view = getActiveView();
+		if (view && view.state === doc.editorState) view.dispatch(replace);
+
+		documents.set(docId, {
+			...doc,
+			editorState: replace.state,
+			lineEnding: read.lineEnding,
+			savedContent: read.contents
+		});
+	}
+}
+
+let unlistenFileChanged: (() => void) | null = null;
+
+export async function initExternalFileWatch(): Promise<void> {
+	unlistenFileChanged = await listen<string>('workspace://file-changed', (event) => {
+		handleExternalFileChange(event.payload);
+	});
+}
+
+export function teardownExternalFileWatch(): void {
+	unlistenFileChanged?.();
+	unlistenFileChanged = null;
 }

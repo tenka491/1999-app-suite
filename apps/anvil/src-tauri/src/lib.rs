@@ -11,10 +11,12 @@ pub fn run() {
   tauri::Builder::default()
     .plugin(tauri_plugin_dialog::init())
     .manage(workspace::WatchedDirs::new())
+    .manage(workspace::WatchedFiles::new())
     .manage(search::FileIndex::new())
     .invoke_handler(tauri::generate_handler![
       fs::read_file,
       fs::write_file,
+      fs::get_file_size,
       config::read_user_keymap,
       config::read_user_settings,
       config::write_user_settings,
@@ -23,6 +25,8 @@ pub fn run() {
       workspace::watch_directory_cmd,
       workspace::unwatch_directory_cmd,
       workspace::unwatch_all_directories,
+      workspace::watch_file_cmd,
+      workspace::unwatch_file_cmd,
       search::index_workspace,
       search::search_files
     ])

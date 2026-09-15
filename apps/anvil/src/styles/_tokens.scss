@@ -2,6 +2,9 @@
 // styles/themes/*.scss, keyed on the `data-theme` attribute (PRD §F10).
 :root {
 	--font-mono: 'Red Hat Mono', ui-monospace, monospace;
+	// Default only — the live value is session-only (F3) and set on :root by
+	// font-size-state.svelte.ts, not persisted to settings.jsonc.
+	--font-size-editor: 14px;
 
 	--space-1: 8px;
 	--space-2: 16px;

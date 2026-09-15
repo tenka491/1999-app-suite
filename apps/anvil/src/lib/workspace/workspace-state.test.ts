@@ -8,10 +8,27 @@ async function freshWorkspaceState() {
 	return import('./workspace-state.svelte');
 }
 
+// openDocument/closeTabSilently call watchFile/unwatchFile unconditionally
+// now (§F2) — real Tauri IPC isn't available under Vitest, so every test
+// needs at least these two mocked, not just the ones that also read/write
+// file content. Individual tests override readFile/writeFile/saveAsDialog
+// on top of these defaults via their own mockFileIo() call.
+function mockFileIo(overrides: Record<string, unknown> = {}) {
+	vi.doMock('./file-io', () => ({
+		readFile: vi.fn(),
+		writeFile: vi.fn(),
+		saveAsDialog: vi.fn(),
+		watchFile: vi.fn().mockResolvedValue(undefined),
+		unwatchFile: vi.fn().mockResolvedValue(undefined),
+		...overrides
+	}));
+}
+
 describe('workspace-state', () => {
 	let ws: Awaited<ReturnType<typeof freshWorkspaceState>>;
 
 	beforeEach(async () => {
+		mockFileIo();
 		ws = await freshWorkspaceState();
 	});
 
@@ -71,9 +88,7 @@ describe('workspace-state', () => {
 	it('reopening a closed tab re-focuses that path', async () => {
 		// readFile() is invoked by reopenClosedTab; stub the Tauri IPC call it
 		// goes through so this test doesn't need a real backend.
-		vi.doMock('./file-io', () => ({
-			readFile: vi.fn().mockResolvedValue({ contents: 'a', lineEnding: 'lf' })
-		}));
+		mockFileIo({ readFile: vi.fn().mockResolvedValue({ contents: 'a', lineEnding: 'lf' }) });
 		ws = await freshWorkspaceState();
 		ws.openDocument('/a.txt', 'a', 'lf', { preview: false });
 		await ws.requestCloseTab(ws.getActivePane().tabs[0].id);
@@ -105,10 +120,7 @@ describe('workspace-state', () => {
 	});
 
 	it('saveDocument promotes a preview tab (F2.1: save promotes)', async () => {
-		vi.doMock('./file-io', () => ({
-			writeFile: vi.fn().mockResolvedValue(undefined),
-			saveAsDialog: vi.fn()
-		}));
+		mockFileIo({ writeFile: vi.fn().mockResolvedValue(undefined), saveAsDialog: vi.fn() });
 		ws = await freshWorkspaceState();
 		ws.openDocument('/a.txt', 'a', 'lf', { preview: true });
 		const doc = ws.getActiveDocument()!;

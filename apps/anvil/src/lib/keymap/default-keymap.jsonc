@@ -49,5 +49,8 @@
 	{ "keys": ["mod+g"], "command": "find.next", "platform": "macos" },
 	{ "keys": ["f3"], "command": "find.next", "platform": "linux" },
 	{ "keys": ["mod+shift+g"], "command": "find.prev", "platform": "macos" },
-	{ "keys": ["shift+f3"], "command": "find.prev", "platform": "linux" }
+	{ "keys": ["shift+f3"], "command": "find.prev", "platform": "linux" },
+	{ "keys": ["mod+="], "command": "view.font_size_increase" },
+	{ "keys": ["mod+-"], "command": "view.font_size_decrease" },
+	{ "keys": ["mod+0"], "command": "view.font_size_reset" }
 ]

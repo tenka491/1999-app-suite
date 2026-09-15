@@ -9,6 +9,7 @@ import { selectionCommands } from './selection';
 import { findCommands } from './find';
 import { preferencesCommands } from './preferences';
 import { themeCommands } from './theme';
+import { viewCommands } from './view';
 
 export function registerCoreCommands(): void {
 	for (const command of [
@@ -21,7 +22,8 @@ export function registerCoreCommands(): void {
 		...selectionCommands,
 		...findCommands,
 		...preferencesCommands,
-		...themeCommands
+		...themeCommands,
+		...viewCommands
 	]) {
 		register(command, 'core');
 	}

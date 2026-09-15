@@ -4,10 +4,18 @@
 	import { getCurrentWindow } from '@tauri-apps/api/window';
 	import { registerCoreCommands } from '$lib/commands/core';
 	import { initKeymap, teardownKeymap, handleGlobalKeydown } from '$lib/keymap/keymap-store.svelte';
-	import { hasAnyDirtyDocuments, saveAllDirtyDocuments } from '$lib/workspace/workspace-state.svelte';
+	import {
+		hasAnyDirtyDocuments,
+		saveAllDirtyDocuments,
+		applyEditorSettingsToAllDocuments,
+		initExternalFileWatch,
+		teardownExternalFileWatch
+	} from '$lib/workspace/workspace-state.svelte';
 	import { initFolderWatch, teardownFolderWatch } from '$lib/workspace/folder-tree.svelte';
 	import { initSettings, teardownSettings, getSettings } from '$lib/settings/settings-store.svelte';
 	import { resolveDataTheme } from '$lib/settings/themes';
+	import { initFontSize, getFontSize } from '$lib/editor/font-size-state.svelte';
+	import { getActiveView } from '$lib/workspace/active-view.svelte';
 	import { askUnsavedChanges } from '$lib/ui/confirm.svelte';
 	import Toast from '$lib/ui/Toast.svelte';
 	import Palette from '$lib/ui/Palette.svelte';
@@ -36,12 +44,36 @@
 	});
 
 	$effect(() => {
-		initSettings();
+		initExternalFileWatch();
+		return () => teardownExternalFileWatch();
+	});
+
+	$effect(() => {
+		// Seeds the session font size from the real loaded settings once —
+		// see font-size-state.svelte.ts for why this doesn't belong inside
+		// settings-store.svelte.ts itself (font size is session-only and
+		// shouldn't re-seed on every later settings change).
+		initSettings().then(() => initFontSize());
 		return () => teardownSettings();
 	});
 
 	$effect(() => {
 		document.documentElement.dataset.theme = resolveDataTheme(getSettings().theme);
+	});
+
+	$effect(() => {
+		document.documentElement.style.setProperty('--font-size-editor', `${getFontSize()}px`);
+		// CodeMirror caches gutter/line measurements and only recomputes them
+		// on its own detected changes (content, viewport, a dispatch) — an
+		// external CSS var change it didn't dispatch leaves line numbers
+		// measured for the old font size, visibly out of step with the
+		// content. requestMeasure() forces a remeasure pass; it's a schedule
+		// call, not a dispatch, so no untrack() concern here.
+		getActiveView()?.requestMeasure();
+	});
+
+	$effect(() => {
+		applyEditorSettingsToAllDocuments(getSettings());
 	});
 
 	$effect(() => {
