@@ -1,7 +1,8 @@
 {
   "$schema": "../../../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "anvil",
-  "version": "1.0.0",
+  "productName": "Anvil",
+  "mainBinaryName": "anvil",
+  "version": "1.0.1",
   "identifier": "io.github.tenka491.anvil",
   "build": {
     "frontendDist": "../build",
